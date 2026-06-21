@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.user.mapper.ExpRecordMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_exp_record (user_id, exp_value, reason)
+        VALUES (#{userId}, #{expValue}, #{reason})
+    </insert>
+
+    <select id="selectByUserId" resultType="com.lyy.user.entity.po.ExpRecord">
+        SELECT id, user_id, exp_value, reason, create_time
+        FROM user_exp_record
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countTodayByReason" resultType="int">
+        SELECT COUNT(*)
+        FROM user_exp_record
+        WHERE user_id = #{userId}
+          AND reason = #{reason}
+          AND DATE(create_time) = CURDATE()
+    </select>
+
+    <select id="countTotalByReason" resultType="int">
+        SELECT COUNT(*)
+        FROM user_exp_record
+        WHERE user_id = #{userId}
+          AND reason = #{reason}
+    </select>
+
+    <delete id="deleteOldRecords">
+        DELETE FROM user_exp_record
+        WHERE user_id = #{userId}
+          AND id NOT IN (
+              SELECT id FROM (
+                  SELECT id FROM user_exp_record
+                  WHERE user_id = #{userId}
+                  ORDER BY create_time DESC
+                  LIMIT #{keepCount}
+              ) AS tmp
+          )
+    </delete>
+
+</mapper>

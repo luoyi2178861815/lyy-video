@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.VideoLikeMapper">
+
+    <sql id="Base_Column_List">
+        id, video_id, user_id, create_time
+    </sql>
+
+    <!-- 检查用户是否已点赞该视频 -->
+    <select id="exits" resultType="int">
+        SELECT COUNT(1)
+        FROM video_like
+        WHERE video_id = #{videoId} AND user_id = #{userId}
+    </select>
+
+    <!-- 取消点赞 -->
+    <delete id="deletelike">
+        DELETE FROM video_like
+        WHERE video_id = #{videoId} AND user_id = #{userId}
+    </delete>
+
+    <!-- 点赞 -->
+    <insert id="like">
+        INSERT INTO video_like (video_id, user_id, create_time)
+        VALUES (#{videoId}, #{userId}, #{createTime})
+    </insert>
+
+    <!-- 分页查询用户点赞列表（按点赞时间倒序） -->
+    <select id="selectUserLikePage" resultType="com.lyy.interaction.entity.po.VideoLike">
+        SELECT <include refid="Base_Column_List"/>
+        FROM video_like
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 用户点赞总数 -->
+    <select id="selectUserLikeCount" resultType="int">
+        SELECT COUNT(*)
+        FROM video_like
+        WHERE user_id = #{userId}
+    </select>
+
+</mapper>

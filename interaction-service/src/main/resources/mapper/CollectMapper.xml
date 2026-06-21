@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.CollectMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, video_id, folder_id, create_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO video_collect (user_id, video_id, folder_id, create_time)
+        VALUES (#{userId}, #{videoId}, #{folderId}, #{createTime})
+    </insert>
+
+    <delete id="deleteByUserAndVideo">
+        DELETE FROM video_collect WHERE user_id = #{userId} AND video_id = #{videoId}
+    </delete>
+
+    <delete id="deleteByFolderId">
+        DELETE FROM video_collect WHERE folder_id = #{folderId}
+    </delete>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*) FROM video_collect WHERE user_id = #{userId} AND video_id = #{videoId}
+    </select>
+
+    <select id="selectPageByFolderId" resultType="com.lyy.interaction.entity.po.VideoCollect">
+        SELECT <include refid="Base_Column_List"/> FROM video_collect
+        WHERE folder_id = #{folderId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectCountByFolderId" resultType="int">
+        SELECT COUNT(*) FROM video_collect WHERE folder_id = #{folderId}
+    </select>
+
+    <select id="selectByUserAndVideo" resultType="com.lyy.interaction.entity.po.VideoCollect">
+        SELECT <include refid="Base_Column_List"/> FROM video_collect
+        WHERE user_id = #{userId} AND video_id = #{videoId}
+    </select>
+
+    <select id="selectVideoIdsByFolderId" resultType="long">
+        SELECT video_id FROM video_collect WHERE folder_id = #{folderId}
+    </select>
+
+</mapper>

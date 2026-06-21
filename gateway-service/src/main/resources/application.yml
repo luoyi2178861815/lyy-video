@@ -1,0 +1,59 @@
+# ==================== 网关服务（端口 8000） ====================
+server:
+  port: 8000
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848    # Nacos 注册中心地址
+    gateway:
+      # 全局跨域配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        # ========== 用户服务路由 ==========
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+        # ========== 视频服务路由 ==========
+        - id: video-service
+          uri: lb://video-service
+          predicates:
+            - Path=/api/video/**
+          filters:
+            - StripPrefix=1
+        # ========== 互动服务路由 ==========
+        - id: interaction-service
+          uri: lb://interaction-service
+          predicates:
+            - Path=/api/interact/**
+          filters:
+            - StripPrefix=1
+        # ========== 推荐服务路由 ==========
+        - id: recommend-service
+          uri: lb://recommend-service
+          predicates:
+            - Path=/api/recommend/**
+          filters:
+            - StripPrefix=1
+
+# JWT 配置（网关需要使用 JwtUtil 解析 Token）
+lyy:
+  jwt:
+    admin-secret-key: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6"
+    admin-ttl: 7200
+    admin-token-name: "Admin-Token"
+    user-secret-key: "z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0f9e8d7c6b5"
+    user-ttl: 604800
+    user-token-name: "User-Token"

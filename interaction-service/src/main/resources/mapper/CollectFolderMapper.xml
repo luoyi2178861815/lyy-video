@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.CollectFolderMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, name, description, is_public, video_count, cover_url, create_time, update_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO collect_folder (user_id, name, description, is_public, video_count, cover_url, create_time, update_time)
+        VALUES (#{userId}, #{name}, #{description}, #{isPublic}, 0, '', #{createTime}, #{updateTime})
+    </insert>
+
+    <select id="selectById" resultType="com.lyy.interaction.entity.po.CollectFolder">
+        SELECT <include refid="Base_Column_List"/> FROM collect_folder WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserId" resultType="com.lyy.interaction.entity.po.CollectFolder">
+        SELECT <include refid="Base_Column_List"/> FROM collect_folder
+        WHERE user_id = #{userId}
+        ORDER BY create_time ASC
+    </select>
+
+    <select id="selectDefaultByUserId" resultType="com.lyy.interaction.entity.po.CollectFolder">
+        SELECT <include refid="Base_Column_List"/> FROM collect_folder
+        WHERE user_id = #{userId}
+        ORDER BY create_time ASC
+        LIMIT 1
+    </select>
+
+    <update id="updateById">
+        UPDATE collect_folder
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="isPublic != null">is_public = #{isPublic},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM collect_folder WHERE id = #{id}
+    </delete>
+
+    <update id="updateCountAndCover">
+        UPDATE collect_folder
+        SET video_count = GREATEST(video_count + #{increment}, 0),
+            cover_url = IF(#{coverUrl} IS NOT NULL AND #{coverUrl} != '', #{coverUrl}, cover_url)
+        WHERE id = #{id}
+    </update>
+
+    <update id="incrVideoCount">
+        UPDATE collect_folder SET video_count = video_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decrVideoCount">
+        UPDATE collect_folder SET video_count = GREATEST(video_count - 1, 0) WHERE id = #{id}
+    </update>
+
+</mapper>

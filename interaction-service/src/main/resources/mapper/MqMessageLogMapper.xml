@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.MqMessageLogMapper">
+    <insert id="insert" parameterType="com.lyy.interaction.entity.po.MqMessageLog">
+        insert into mq_message_log (message_id, message,exchange, routing_key, status,retry_count,error_msg, create_time, update_time)
+        values (#{messageId}, #{message}, #{exchange}, #{routingKey}, #{status}, #{retryCount}, #{errorMsg}, #{createTime}, #{updateTime})
+    </insert>
+
+</mapper>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.VideoCoinMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO video_coin (user_id, video_id)
+        VALUES (#{userId}, #{videoId})
+    </insert>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*) FROM video_coin
+        WHERE user_id = #{userId} AND video_id = #{videoId}
+    </select>
+
+</mapper>

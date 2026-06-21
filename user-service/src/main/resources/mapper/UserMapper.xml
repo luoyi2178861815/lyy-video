@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.user.mapper.UserMapper">
+
+    <sql id="Base_Column_List">
+        id, username, password, nickname, avatar, sign, phone, status,
+        level, exp, follow_count, fans_count, like_total, play_total, coin_count,
+        email, real_name_verified, create_time, update_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (username, password, nickname, avatar, sign, phone, status, level, exp, coin_count, email)
+        VALUES (#{username}, #{password}, #{nickname}, #{avatar}, #{sign}, #{phone}, 1, 0, 0, 0, #{email})
+    </insert>
+
+    <select id="selectById" resultType="com.lyy.user.entity.po.User">
+        SELECT <include refid="Base_Column_List"/> FROM user WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultType="com.lyy.user.entity.po.User">
+        SELECT <include refid="Base_Column_List"/> FROM user WHERE username = #{username}
+    </select>
+
+    <update id="updateById">
+        UPDATE user
+        <set>
+            <if test="nickname != null and nickname != ''">nickname = #{nickname},</if>
+            <if test="avatar != null and avatar != ''">avatar = #{avatar},</if>
+            <if test="sign != null">sign = #{sign},</if>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="email != null and email != ''">email = #{email},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="exp != null">exp = #{exp},</if>
+            <if test="realNameVerified != null">real_name_verified = #{realNameVerified},</if>
+            <if test="coinCount != null">coin_count = #{coinCount},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <update id="incrementExp">
+        UPDATE user
+        SET exp = GREATEST(0, exp + #{increment}),
+            update_time = NOW()
+        WHERE id = #{userId}
+    </update>
+
+    <update id="updateUserLikeCount">
+        UPDATE user
+        SET like_total = GREATEST(0, like_total + #{increment})
+        WHERE id = #{userId}
+    </update>
+
+    <update id="updateFollowCount">
+        UPDATE user
+        SET follow_count = GREATEST(0, follow_count + #{increment})
+        WHERE id = #{userId}
+    </update>
+
+    <update id="updateFansCount">
+        UPDATE user
+        SET fans_count = GREATEST(0, fans_count + #{increment})
+        WHERE id = #{userId}
+    </update>
+
+
+    <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+    <select id="selectUserList" resultType="com.lyy.user.entity.po.User">
+        SELECT <include refid="Base_Column_List"/> FROM user
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR nickname LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectUserCount" resultType="int">
+        SELECT COUNT(*) FROM user
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR nickname LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <select id="selectByIds" resultType="com.lyy.user.entity.po.User">
+        SELECT <include refid="Base_Column_List"/> FROM user
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="selectLevelById" resultType="int">
+        SELECT level FROM user WHERE id = #{userId}
+    </select>
+</mapper>

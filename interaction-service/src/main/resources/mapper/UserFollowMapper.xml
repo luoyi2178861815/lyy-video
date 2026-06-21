@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.UserFollowMapper">
+
+    <sql id="Base_Column_List">
+        id, follower_id, followee_id, create_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_follow (follower_id, followee_id, create_time)
+        VALUES (#{followerId}, #{followeeId}, #{createTime})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_follow WHERE follower_id = #{followerId} AND followee_id = #{followeeId}
+    </delete>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*) FROM user_follow WHERE follower_id = #{followerId} AND followee_id = #{followeeId}
+    </select>
+
+    <select id="selectFollowingPage" resultType="com.lyy.interaction.entity.po.UserFollow">
+        SELECT <include refid="Base_Column_List"/> FROM user_follow
+        WHERE follower_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectFollowingCount" resultType="int">
+        SELECT COUNT(*) FROM user_follow WHERE follower_id = #{userId}
+    </select>
+
+    <select id="selectFansPage" resultType="com.lyy.interaction.entity.po.UserFollow">
+        SELECT <include refid="Base_Column_List"/> FROM user_follow
+        WHERE followee_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectFansCount" resultType="int">
+        SELECT COUNT(*) FROM user_follow WHERE followee_id = #{userId}
+    </select>
+
+</mapper>

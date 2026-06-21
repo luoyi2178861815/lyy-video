@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.video.mapper.VideoMapper">
+
+    <!-- 插入视频记录 -->
+    <insert id="insert" parameterType="com.lyy.video.entity.po.Video" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO video (
+            user_id,
+            video_url,
+            cover_url,
+            title,
+            introduction,
+            statement_code,
+            partition_code,
+            tags,
+            duration,
+            collect_count,
+            comment_count,
+            play_count,
+            status,
+            total_watch_duration,
+            hot_score,
+            like_count,
+            coin_count,
+            create_time,
+            update_time
+        ) VALUES (
+            #{userId},
+            #{videoUrl},
+            #{coverUrl},
+            #{title},
+            #{introduction},
+            #{statementCode},
+            #{partitionCode},
+            #{tags},
+            #{duration},
+            #{collectCount},
+            #{commentCount},
+            #{playCount},
+            #{status},
+            #{totalWatchDuration},
+            #{hotScore},
+            #{likeCount},
+            #{coinCount},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+    <update id="updatePlayCount">
+        UPDATE video
+        SET play_count = play_count + 1
+        WHERE id = #{videoId}
+    </update>
+
+    <update id="updateCommentCount">
+        UPDATE video
+        SET comment_count = GREATEST(comment_count + #{increment}, 0)
+        WHERE id = #{videoId}
+    </update>
+    <update id="updateLikeCount">
+        UPDATE video
+        SET like_count = GREATEST(like_count + #{increment}, 0)
+        WHERE id = #{videoId}
+    </update>
+
+    <update id="updateCollectCount">
+        UPDATE video
+        SET collect_count = GREATEST(collect_count + #{increment}, 0)
+        WHERE id = #{videoId}
+    </update>
+
+    <update id="updateCoinCount">
+        UPDATE video
+        SET coin_count = GREATEST(coin_count + #{increment}, 0)
+        WHERE id = #{videoId}
+    </update>
+    <select id="getVideoInfo" resultType="com.lyy.video.entity.po.Video" parameterType="java.lang.Long">
+            SELECT * FROM video WHERE id = #{videoId}
+    </select>
+
+    <select id="exists" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM video WHERE id = #{videoId} AND status != 2
+    </select>
+
+    <select id="selectByIds" resultType="com.lyy.video.entity.po.Video">
+        SELECT * FROM video
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+</mapper>

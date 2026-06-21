@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.interaction.mapper.CommentMapper">
+
+    <sql id="Base_Column_List">
+        id, video_id, user_id, parent_id, root_id, reply_to_user_id,
+        content, like_count, status, create_time, update_time
+    </sql>
+
+    <!-- ==================== 写入 ==================== -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment (video_id, user_id, parent_id, root_id, reply_to_user_id, content, like_count, status, create_time, update_time)
+        VALUES (#{videoId}, #{userId}, #{parentId}, #{rootId}, #{replyToUserId}, #{content}, #{likeCount}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateRootId">
+        UPDATE comment SET root_id = #{rootId} WHERE id = #{id}
+    </update>
+
+    <update id="updateContent">
+        UPDATE comment SET content = #{content} WHERE id = #{id}
+    </update>
+
+    <update id="deleteById">
+        UPDATE comment SET status = 0 WHERE id = #{id}
+    </update>
+
+    <!-- ==================== 查询 ==================== -->
+    <select id="selectByCommentId" resultType="com.lyy.interaction.entity.po.Comment">
+        SELECT <include refid="Base_Column_List"/> FROM comment WHERE id = #{id}
+    </select>
+
+    <select id="selectAllByVideoId" resultType="com.lyy.interaction.entity.po.Comment">
+        SELECT <include refid="Base_Column_List"/> FROM comment
+        WHERE video_id = #{videoId}
+        ORDER BY create_time ASC
+    </select>
+
+    <select id="selectRootPage" resultType="com.lyy.interaction.entity.po.Comment">
+        SELECT <include refid="Base_Column_List"/> FROM comment
+        WHERE video_id = #{videoId} AND parent_id = 0 AND status != 0
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectRootCount" resultType="int">
+        SELECT COUNT(*) FROM comment
+        WHERE video_id = #{videoId} AND parent_id = 0 AND status != 0
+    </select>
+
+    <select id="selectByRootIds" resultType="com.lyy.interaction.entity.po.Comment">
+        SELECT <include refid="Base_Column_List"/> FROM comment
+        WHERE root_id IN
+        <foreach collection="rootIds" item="rid" open="(" separator="," close=")">
+            #{rid}
+        </foreach>
+        AND status != 0
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- ==================== 点赞 ==================== -->
+    <insert id="insertLike">
+        INSERT INTO comment_like (comment_id, user_id) VALUES (#{commentId}, #{userId})
+    </insert>
+
+    <delete id="deleteLike">
+        DELETE FROM comment_like WHERE comment_id = #{commentId} AND user_id = #{userId}
+    </delete>
+
+    <select id="selectLikeExists" resultType="int">
+        SELECT COUNT(*) FROM comment_like WHERE comment_id = #{commentId} AND user_id = #{userId}
+    </select>
+
+    <update id="incrLikeCount">
+        UPDATE comment SET like_count = like_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decrLikeCount">
+        UPDATE comment SET like_count = like_count - 1 WHERE id = #{id}
+    </update>
+</mapper>
