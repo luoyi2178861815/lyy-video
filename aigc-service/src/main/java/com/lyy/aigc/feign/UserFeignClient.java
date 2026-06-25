@@ -1,7 +1,6 @@
-package com.lyy.video.feign;
+package com.lyy.aigc.feign;
 
 import com.lyy.common.result.Result;
-import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
