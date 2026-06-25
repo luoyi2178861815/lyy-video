@@ -38,8 +38,16 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
      */
     private static final List<String> WHITE_LIST = List.of(
             "/api/user/login",
-            "/api/user/register"
+            "/api/user/register",
+            "/api/video/page",
+            "/api/video/search",
+            "/api/video/partitions"
     );
+
+    /**
+     * 文件流 GET 请求白名单（上传 POST 仍需鉴权）
+     */
+    private static final String FILE_STREAM_PATH = "/api/video/file/";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -47,7 +55,12 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
 
         // 白名单放行
-        if (WHITE_LIST.stream().anyMatch(path::contains)) {
+        boolean isWhitelisted = WHITE_LIST.stream().anyMatch(path::contains);
+        // 文件流 GET 请求放行，上传 POST 仍需鉴权
+        boolean isFileStream = path.contains(FILE_STREAM_PATH)
+                && request.getMethod().name().equals("GET");
+
+        if (isWhitelisted || isFileStream) {
             log.debug("白名单路径放行: {}", path);
             return chain.filter(exchange);
         }

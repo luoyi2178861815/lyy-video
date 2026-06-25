@@ -82,6 +82,46 @@
         SELECT COUNT(*) FROM video WHERE id = #{videoId} AND status != 2
     </select>
 
+    <!-- 视频搜索（标题 + 简介模糊匹配） -->
+    <select id="searchVideos" resultType="com.lyy.video.entity.po.Video">
+        SELECT * FROM video
+        WHERE status = 1
+          AND (title LIKE CONCAT('%', #{keyword}, '%')
+               OR introduction LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY hot_score DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countSearchVideos" resultType="long">
+        SELECT COUNT(*) FROM video
+        WHERE status = 1
+          AND (title LIKE CONCAT('%', #{keyword}, '%')
+               OR introduction LIKE CONCAT('%', #{keyword}, '%'))
+    </select>
+
+    <!-- 视频分页列表（支持分区筛选 + 排序） -->
+    <select id="pageVideos" resultType="com.lyy.video.entity.po.Video">
+        SELECT * FROM video
+        WHERE status = 1
+        <if test="partitionCode != null">
+            AND partition_code = #{partitionCode}
+        </if>
+        <choose>
+            <when test="sort == 'latest'">ORDER BY create_time DESC</when>
+            <when test="sort == 'play'">ORDER BY play_count DESC</when>
+            <otherwise>ORDER BY hot_score DESC</otherwise>
+        </choose>
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countPageVideos" resultType="long">
+        SELECT COUNT(*) FROM video
+        WHERE status = 1
+        <if test="partitionCode != null">
+            AND partition_code = #{partitionCode}
+        </if>
+    </select>
+
     <select id="selectByIds" resultType="com.lyy.video.entity.po.Video">
         SELECT * FROM video
         WHERE id IN
@@ -89,4 +129,15 @@
             #{id}
         </foreach>
     </select>
+    <select id="getMyVideos" resultType="com.lyy.video.entity.po.Video">
+    SELECT * FROM video
+    WHERE user_id IN
+    <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+        #{userId}
+    </foreach>
+    AND status = 1
+    LIMIT #{offset}, #{pageSize}
+
+</select>
+
 </mapper>

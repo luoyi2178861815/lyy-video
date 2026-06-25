@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -54,17 +55,19 @@ public class VideoCoinServiceImpl implements VideoCoinService {
     private static final long CACHE_EXPIRE_DAYS = 30L;
     //
 
-    @Override
     @Transactional
     @SentinelResource("giveCoin")
     public Result<String> giveCoin(Long userId, Long videoId) {
+        //分布式锁
         String lockKey = COIN_LOCK_KEY_PREFIX + userId + ":" + videoId;
+        //缓存key
         String cacheKey = COIN_CACHE_KEY_PREFIX + userId + ":" + videoId;
-        
+
+
         try {
+
             Boolean locked = stringRedisTemplate.opsForValue()
                     .setIfAbsent(lockKey, "1", LOCK_EXPIRE_TIME, TimeUnit.SECONDS);
-            
             if (Boolean.FALSE.equals(locked)) {
                 log.warn("用户 {} 对视频 {} 的投币请求正在处理中", userId, videoId);
                 return Result.error("请勿重复提交");
@@ -75,10 +78,10 @@ public class VideoCoinServiceImpl implements VideoCoinService {
                 log.info("缓存命中：用户 {} 已对视频 {} 投过币", userId, videoId);
                 return Result.error("您已经对该视频投过币了");
             }
-            
-            Result<Integer> levelResult = userFeignClient.getUserLevel(userId);
-            if (levelResult != null && levelResult.getData() != null && levelResult.getData() == 0) {
-                return Result.error("Lv0 用户暂不支持投币，请先获取经验升级");
+            // 查询用户硬币余额和用户等级
+            Result<Map<String, Object>> R= userFeignClient.getUserLevelandCoin(userId);
+            if (R != null && R.getData() != null && R.getData().get("level") != null && (Integer) R.getData().get("coin") > 0) {
+                return Result.error("Lv0 用户暂不支持投币或者硬币余额不足，请先获取经验升级");
             }
         
             VideoCoin coin = new VideoCoin();
@@ -114,7 +117,6 @@ public class VideoCoinServiceImpl implements VideoCoinService {
                     rabbitTemplate.convertAndSend(MqConstant.VIDEO_COIN_EXCHANGE, MqConstant.VIDEO_COIN_ROUTING_KEY, msg);
                     ExpMessage coinExpMsg = ExpMessage.of(userId, 10, "daily_coin");
                     rabbitTemplate.convertAndSend(MqConstant.EXP_EXCHANGE, MqConstant.EXP_ROUTING_KEY, coinExpMsg);
-
                     stringRedisTemplate.opsForValue().set(cacheKey, "1", CACHE_EXPIRE_DAYS, TimeUnit.DAYS);}
 
                 catch (Exception exception) {

@@ -80,8 +80,6 @@ public class ExpServiceImpl implements ExpService {
         record.setReason(reason);
         expRecordMapper.insert(record);
 
-        // 7. 清理旧记录（保留最近30条）
-        expRecordMapper.deleteOldRecords(userId, 30);
 
         log.info("经验发放成功：userId={}, expValue={}, reason={}, totalExp={}",
                 userId, expValue, reason, newExp);
@@ -113,4 +111,5 @@ public class ExpServiceImpl implements ExpService {
         if (exp < 28800) return 5;
         return 6;
     }
+
 }

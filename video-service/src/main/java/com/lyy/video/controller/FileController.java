@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/file")
+@RequestMapping("/video/file")
 @Slf4j
 public class FileController {
 
@@ -22,19 +22,6 @@ public class FileController {
     @Autowired
     private VideoService videoService;
 
-    /**
-     * 测试接口：验证网关鉴权 → 用户上下文是否正确传递
-     * 用完可以删掉
-     */
-    @GetMapping("/test/current-user")
-    public Result<Long> testCurrentUser() {
-        Long userId = BaseContext.getCurrentId();
-        log.info("当前用户ID: {}", userId);
-        if (userId == null) {
-            return Result.error("未获取到用户ID，请检查网关过滤器或拦截器");
-        }
-        return Result.success(userId);
-    }
 
     /**
      * 用户发布视频

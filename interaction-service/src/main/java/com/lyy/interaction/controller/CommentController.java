@@ -33,8 +33,8 @@ public class CommentController {
         log.info("用户添加评论：{}", commentAddDTO);
         // Lv0 用户禁止评论
         Long userId = BaseContext.getCurrentId();
-        Result<Integer> levelResult = userFeignClient.getUserLevel(userId);
-        if (levelResult != null && levelResult.getData() != null && levelResult.getData() == 0) {
+        Result<Map<String, Object>> levelResult = userFeignClient.getUserLevelandCoin(userId);
+        if (levelResult != null && levelResult.getData() != null && levelResult.getData().get("level") != null && (Integer) levelResult.getData().get("level") == 0) {
             return Result.error("Lv0 用户暂不支持评论，请先获取经验升级");
         }
         commentService.addComment(commentAddDTO);

@@ -1,14 +1,34 @@
 package com.lyy.video.controller;
 
+import com.lyy.common.context.BaseContext;
+import com.lyy.common.enums.PartitionEnum;
+import com.lyy.common.result.PageResult;
 import com.lyy.common.result.Result;
+import com.lyy.common.utils.FileUploadUtil;
 import com.lyy.video.entity.po.Video;
+import com.lyy.video.entity.vo.MyVideoVO;
 import com.lyy.video.entity.vo.VideoInfoVO;
 import com.lyy.video.service.UserVideoRecordService;
 import com.lyy.video.service.VideoService;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -20,6 +40,8 @@ public class PlayVideoController {
     private VideoService videoService;
     @Autowired
     private UserVideoRecordService UserVideorecordService;
+    @Autowired
+    private FileUploadUtil fileUploadUtil;
     /**
      * 用户点击视频页面，获取视频信息
      */
@@ -69,11 +91,79 @@ public class PlayVideoController {
     }
 
     /**
+     * 视频搜索（标题 + 简介模糊匹配）
+     */
+    @GetMapping("/search")
+    public Result<PageResult> searchVideos(@RequestParam String keyword,
+                                           @RequestParam(defaultValue = "1") int pageNum,
+                                           @RequestParam(defaultValue = "12") int pageSize) {
+        log.info("视频搜索：keyword={}, pageNum={}, pageSize={}", keyword, pageNum, pageSize);
+        PageResult result = videoService.searchVideos(keyword, pageNum, pageSize);
+        return Result.success(result);
+    }
+
+    /**
+     * 视频分页列表（首页 / 分区筛选 / 排序）
+     */
+    @GetMapping("/page")
+    public Result<PageResult> pageVideos(@RequestParam(required = false) Integer partition,
+                                         @RequestParam(defaultValue = "hot") String sort,
+                                         @RequestParam(value = "page", defaultValue = "1") int pageNum,
+                                         @RequestParam(defaultValue = "15") int pageSize) {
+        log.info("视频分页查询：partition={}, sort={}, pageNum={}, pageSize={}", partition, sort, pageNum, pageSize);
+        PageResult result = videoService.pageVideos(partition, sort, pageNum, pageSize);
+        return Result.success(result);
+    }
+
+    /**
+     * 视频/封面文件流（支持 Range 分段请求）
+     */
+    @GetMapping("/file/{filename}")
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+        try {
+            Path filePath = Paths.get(fileUploadUtil.getStoragePath()).resolve(filename).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+            MediaType mediaType = MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
+            
+            String encodedFilename = java.net.URLEncoder.encode(filename, java.nio.charset.StandardCharsets.UTF_8)
+                    .replaceAll("\\+", "%20");
+            
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encodedFilename)
+                    .body(resource);
+        } catch (MalformedURLException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
      * 批量查询视频信息（供内部Feign调用）
      */
     @GetMapping("/batch")
     public Result<List<Video>> getVideosByIds(@RequestParam List<Long> ids) {
         List<Video> list = videoService.getVideosByIds(ids);
         return Result.success(list);
+    }
+
+    /**
+     * 获取全部分区列表
+     */
+    @GetMapping("/partitions")
+    public Result<List<Map<String, Object>>> getPartitions() {
+        List<Map<String, Object>> list = Arrays.stream(PartitionEnum.values())
+                .map(p -> Map.of("code", (Object) p.getCode(), "name", (Object) p.getDesc()))
+                .collect(Collectors.toList());
+        return Result.success(list);
+    }
+    @GetMapping("/myVideos")
+    public Result<List<MyVideoVO>> getMyVideos(@RequestParam(defaultValue = "1") int pageNum,
+                                               @RequestParam(defaultValue = "12") int pageSize) {
+        log.info("获取用户视频列表：pageNum={}, pageSize={}", pageNum, pageSize);
+        List<MyVideoVO> result = videoService.getMyVideos(pageNum, pageSize);
+        return Result.success(result);
     }
 }

@@ -3,20 +3,21 @@ package com.lyy.video.service.impl;
 import com.lyy.common.context.BaseContext;
 import com.lyy.common.exception.BusinessException;
 import com.lyy.common.exception.VideoNotFoundException;
+import com.lyy.common.result.PageResult;
 import com.lyy.common.result.Result;
 import com.lyy.video.entity.dto.VideoUploadDTO;
 import com.lyy.video.entity.po.Video;
+import com.lyy.video.entity.vo.MyVideoVO;
 import com.lyy.video.entity.vo.VideoInfoVO;
 import com.lyy.video.feign.InteractionFeignClient;
+import com.lyy.video.feign.UserFeignClient;
 import com.lyy.video.mapper.UserVideoRecordMapper;
 import com.lyy.video.mapper.VideoMapper;
 import com.lyy.video.service.VideoService;
 import com.lyy.video.utils.VideoUtil;
-import io.micrometer.core.instrument.binder.BaseUnits;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -36,6 +38,8 @@ public class VideoServiceImpl implements VideoService {
     private UserVideoRecordMapper userVideoRecordMapper;
     @Autowired
     private InteractionFeignClient interactionFeignClient;
+    @Autowired
+    private UserFeignClient userFeignClient;
     
     @Override
     public void uploadVideo(VideoUploadDTO dto) {
@@ -84,7 +88,7 @@ public class VideoServiceImpl implements VideoService {
         }
         //1.获取私密视频
         if(video.getStatus() != null && video.getStatus() == 4){
-            if(userId == null || !userId.equals(video.getUserId())){
+            if(!userId.equals(video.getUserId())){
                 throw new BusinessException("私密视频不存在");
             }
             return changeToVideoInfoVO(video, userId);
@@ -142,6 +146,41 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    public PageResult searchVideos(String keyword, int pageNum, int pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        List<Video> list = videoMapper.searchVideos(keyword, offset, pageSize);
+        long total = videoMapper.countSearchVideos(keyword);
+        return new PageResult(total, list);
+    }
+
+    @Override
+    public PageResult pageVideos(Integer partitionCode, String sort, int pageNum, int pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        List<Video> list = videoMapper.pageVideos(partitionCode, sort, offset, pageSize);
+        long total = videoMapper.countPageVideos(partitionCode);
+        return new PageResult(total, list);
+    }
+
+    // 获取用户发布的视频
+    @Override
+    public List<MyVideoVO> getMyVideos(int pageNum, int pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        Long userId = BaseContext.getCurrentId();
+        List<Video> myVideos = videoMapper.getMyVideos(offset, pageSize, userId);
+        return myVideos.stream().map(video -> {
+            MyVideoVO myVideoVO = new MyVideoVO();
+            myVideoVO.setVideoId(video.getId());
+            myVideoVO.setVideoUrl(video.getVideoUrl());
+            myVideoVO.setCoverUrl(video.getCoverUrl());
+            myVideoVO.setTitle(video.getTitle());
+            myVideoVO.setLikeCount(video.getLikeCount());
+            myVideoVO.setPlayCount(video.getPlayCount());
+            myVideoVO.setCommentCount(video.getCommentCount());
+            return myVideoVO;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
     public List<Video> getVideosByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Collections.emptyList();
@@ -163,6 +202,9 @@ public class VideoServiceImpl implements VideoService {
         VideoInfoVO videoInfoVO = new VideoInfoVO();
         videoInfoVO.setVideoId(video.getId());
         BeanUtils.copyProperties(video, videoInfoVO);
+        //获取视频作者名称
+        String authorName = userFeignClient.getUserByUsername(video.getUserId()).getData();
+        videoInfoVO.setAuthorName(authorName);
         //获取用户观看进度
         if (userVideoRecordMapper.getProgress(userId, video.getId()) != null) {
             Integer watchDuration = userVideoRecordMapper.getProgress(userId, video.getId());

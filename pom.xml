@@ -19,7 +19,7 @@
         <module>gateway-service</module>
         <module>user-service</module>
         <module>video-service</module>
-
+        <module>aigc-service</module>
         <module>interaction-service</module>
         <module>recommend-service</module>
     </modules>
@@ -46,6 +46,8 @@
         <fastjson.version>2.0.43</fastjson.version>
         <springdoc.version>2.5.0</springdoc.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <knife4j.version>4.5.0</knife4j.version>
+        <jackson.version>2.16.1</jackson.version>
     </properties>
 
     <!-- ==================== 依赖管理（仅声明，子模块按需引入） ==================== -->
@@ -84,7 +86,6 @@
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.mybatis.spring.boot</groupId>
                 <artifactId>mybatis-spring-boot-starter</artifactId>
@@ -166,6 +167,13 @@
                 <version>${jjwt.version}</version>
                 <scope>runtime</scope>
             </dependency>
+
+            <!-- Knife4j OpenAPI3 Jakarta -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -177,6 +185,7 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+
 
         <!-- MySQL 数据库驱动（所有需要数据库的模块自动继承） -->
         <dependency>
@@ -201,8 +210,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <release>${java.version}</release>
                     <parameters>true</parameters>
                     <annotationProcessorPaths>
                         <path>
@@ -242,6 +250,17 @@
             <id>central</id>
             <name>Maven Central</name>
             <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
 

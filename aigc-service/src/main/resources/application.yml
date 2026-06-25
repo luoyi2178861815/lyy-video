@@ -1,0 +1,63 @@
+# ==================== 视频服务 ====================
+server:
+  port: 1000
+spring:
+  application:
+    name: aigc-service
+  # SpringBoot3 核心必填，导入nacos公共配置
+  config:
+    import:
+      - aigc-service.yaml
+      # optional: nacos连不上也能启动；依次写所有公共dataId
+      - optional:nacos:common-redis.yml?refreshEnabled=true
+  cloud:
+    nacos:
+      config:
+        server-addr: localhost:8848
+      discovery:
+        server-addr: localhost:8848   # Nacos 注册中心地址
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    #todo
+    url: jdbc:mysql://localhost:3306/db_aigc?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
+  ai:
+    chat:
+      max-messages: 100
+    dashscope:
+      api-key: sk-4434df1003964db3abe02aad0cf17050
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        enabled: true
+        options:
+          model: text-embedding-v3
+          dimensions: 1024
+
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+lyy:
+  ai:
+    prompt:
+      system:
+        chat:
+          data-id: system-chat-message.txt
+          group: DEFAULT_GROUP
+          timeout-ms: 20000

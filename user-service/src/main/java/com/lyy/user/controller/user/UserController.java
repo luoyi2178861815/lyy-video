@@ -111,6 +111,12 @@ public class UserController {
         List<UserProfileVO> list = userService.getProfilesByIds(ids);
         return Result.success(list);
     }
+    @Operation(summary = "查询用户名称（供内部Feign调用）")
+    @GetMapping("/profiles/{userId}")
+    public Result<String> getUserByUsername(@PathVariable Long userId) {
+        String authorName = userService.getAuthorNameByUserId(userId);
+        return Result.success(authorName);
+    }
 
     // ==================== 经验相关 ====================
 
@@ -138,12 +144,14 @@ public class UserController {
         return Result.success(list);
     }
 
-    @Operation(summary = "查询用户等级（供内部Feign调用）")
+    @Operation(summary = "查询用户等级和硬币数量（供内部Feign调用）")
     @GetMapping("/level/{userId}")
-    public Result<Integer> getUserLevel(@PathVariable Long userId) {
+    public Result<Map<String, Object>> getUserLevel(@PathVariable Long userId) {
         Integer level = userService.getUserLevel(userId);
-        return Result.success(level);
+        Long coin = userService.getUserCoinCount(userId);
+        return Result.success(Map.of("level", level, "coin", coin));
     }
+
 
     // ==================== 绑定相关 ====================
 
@@ -210,4 +218,5 @@ public class UserController {
         log.info("用户 {} 首次实名认证，经验+50", userId);
         return Result.success("实名认证成功");
     }
+
 }

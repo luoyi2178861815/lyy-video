@@ -18,6 +18,8 @@ public class VideoInfoVO {
     private Long collectCount;
     private Long commentCount;
     private Long playCount;
+    //返回作者名称
+    private String authorName;
     //返回用户专属信息
     private Integer watchDuration;
     private Long coinCount;

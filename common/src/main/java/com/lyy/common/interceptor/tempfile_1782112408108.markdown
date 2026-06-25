@@ -1,0 +1,400 @@
+# 硬性强制禁令
+禁止B站任何布局、禁止赛博霓虹、禁止二次元粉蓝配色、禁止全屏大圆卡片、禁止浮夸流光动效、禁止市面影视网站通用模板、禁止过度装饰性元素
+
+# 项目概述
+从零原创开发极简轻奢质感影视风视频播放网站完整前端项目
+技术栈: Vite + Vue3 + Naive UI + UnoCSS + 定制ArtPlayer播放器
+后端: SpringBoot微服务架构(通过Gateway网关统一访问)
+设计理念: Less is More - 以留白、材质、光影塑造高级感
+
+# 1. 后端对接固定规则
+
+## 1.1 接口配置
+- 网关基础地址: http://localhost:8080
+- 服务路由规则:
+  - 用户服务: /user/*
+  - 视频服务: /video/*
+  - 互动服务: /interact/* (包含like/collect/comment/coin/follow)
+  - 推荐服务: /recommend/*
+
+## 1.2 鉴权规则
+- 全局请求头: User-Token: <token>
+- Token存储: localStorage('userToken')
+- JWT有效期: 24小时,过期返回code=401
+
+## 1.3 权限管控
+- Vue Router4路由守卫拦截未登录访问
+- 角色区分: 
+  - 普通用户(role=0): 浏览、播放、互动
+  - 管理员(role=1): 额外拥有后台管理权限(/admin/*)
+- 未登录禁止: 播放详情页、收藏、点赞、投币、评论
+- 按钮级权限: v-if="userStore.isAdmin"
+
+## 1.4 统一响应处理
+{
+  code: 1,      // 1=成功, 0=业务失败, 401=未登录/Token过期
+  msg: "",      // 错误提示
+  data: {}      // 实际数据
+}
+
+# 2. 全站原创视觉规范
+
+## 2.1 主配色(浅色主题 - 极简轻奢)
+- 背景: 纯净白 #FFFFFF → 暖灰白 #FAFAFA
+- 主色: 深邃黑 #1A1A1A → 炭灰 #2D2D2D
+- 强调: 香槟金 #D4AF37 → 古铜金 #B8960C
+- 辅助: 中性灰 #8E8E8E → 浅灰 #E5E5E5
+- 文字: 纯黑 #000000 → 深灰 #333333
+- 分割线: 极淡灰 #F0F0F0
+
+## 2.2 深色主题(影院模式)
+- 背景: 深空黑 #0A0A0A → 炭黑 #121212
+- 主色: 象牙白 #F5F5F5 → 米白 #E8E8E8
+- 强调: 琥珀金 #CC9900 → 暗金 #997300
+- 辅助: 深灰 #4A4A4A → 中灰 #6E6E6E
+- 文字: 纯白 #FFFFFF → 亮白 #F0F0F0
+- 分割线: 深灰 #2A2A2A
+
+## 2.3 布局设计(极简主义)
+- 三分栏布局(不对称美学):
+  - 左侧: 悬浮固定导航栏(宽64px,极致精简图标)
+  - 中间: 视频主展示区(自适应,最大宽度1440px)
+  - 右侧: 信息面板(宽360px,可折叠隐藏)
+- 卡片圆角: 4px(克制微弧,近乎直角)
+- 阴影层次:
+  - 轻悬浮: box-shadow: 0 1px 3px rgba(0,0,0,0.08)
+  - 中悬浮: box-shadow: 0 4px 12px rgba(0,0,0,0.12)
+  - 重悬浮: box-shadow: 0 8px 24px rgba(0,0,0,0.16)
+- Hover动效: 
+  - 位移: transform: translateY(-1px)
+  - 过渡: transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1)
+  - 透明度: opacity 0.85 → 1
+- 留白原则:
+  - 页面边距: 48px(桌面) / 24px(平板)
+  - 模块间距: 32px
+  - 内容间距: 16px / 24px
+- 字体层级:
+  - 标题: 24px / 20px / 18px (字重500)
+  - 正文: 14px (字重400)
+  - 辅助: 12px (字重300)
+
+## 2.4 材质与质感
+- 玻璃态效果(Glassmorphism):
+  - 背景模糊: backdrop-filter: blur(20px)
+  - 半透明: background: rgba(255,255,255,0.85)
+  - 细边框: border: 1px solid rgba(255,255,255,0.18)
+- 金属光泽(金色强调):
+  - 渐变: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%)
+  - 悬停高亮: brightness(1.1)
+- 磨砂质感:
+  - 按钮背景: 低饱和度 + 细微纹理
+  - 避免纯平色块
+
+# 3. 全页面规划
+
+## 3.1 公共页面
+- 登录页: /login 
+  - 居中卡片式布局(宽420px)
+  - 极简输入框(下划线样式,无外框)
+  - 金色主按钮(渐变质感)
+  - 支持记住我、忘记密码
+- 注册页: /register 
+  - 分步表单(Step1账号→Step2资料)
+  - 实时校验反馈
+- 404页: /404 
+  - 大号数字"404"(字重100,字号120px)
+  - 副标题"Page Not Found"
+  - 返回首页按钮(幽灵按钮样式)
+- 全局加载页: 
+  - 骨架屏Skeleton(脉冲动画)
+  - Logo淡入淡出(可选)
+
+## 3.2 用户首页 (/home)
+- 顶部导航栏(固定置顶,滚动时添加阴影):
+  - Logo(左对齐,极简文字或图标)
+  - 搜索框(居中,展开收起动画)
+  - 用户头像/登录按钮(右对齐)
+- 精选推荐区(首屏视觉焦点):
+  - 单列大图卡片(宽高比16:9)
+  - 标题叠加底部(渐变遮罩保护可读性)
+  - 自动轮播(手动切换,无指示器)
+- 分类标签栏(横向滚动):
+  - 文字标签(非胶囊形状)
+  - 选中状态: 金色下划线
+  - 平滑滚动吸附
+- 视频网格列表:
+  - 3列布局(桌面) / 2列(平板)
+  - 卡片间距: 24px
+  - 封面图(16:9,hover轻微放大1.02倍)
+  - 信息显示: 标题(两行截断) + UP主 + 播放量
+  - 懒加载 + 无限滚动(触底自动加载)
+- 排序筛选:
+  -  tabs切换: 最热 / 最新 / 最多播放
+  -  点击即时刷新
+
+## 3.3 播放详情页 (/video/:id)
+- 播放器区域(占据屏幕70%宽度,居中):
+  - 16:9比例容器
+  - 黑色背景(影院沉浸感)
+  - 自定义控制栏(半透明,hover显示)
+- 右侧信息面板(Tab切换,独立滚动):
+  - Tab1 简介:
+    - 视频标题(字号20px,字重500)
+    - UP主卡片(头像+昵称+关注按钮)
+    - 分区标签(文字链接样式)
+    - 数据统计(播放/点赞/收藏/投币,图标+数字)
+    - 发布时间
+  - Tab2 评论:
+    - 评论输入框(置顶,简洁样式)
+    - 评论树(分页加载,每页20条)
+    - 单条评论: 头像+用户名+时间+内容+操作按钮
+    - 回复嵌套(最多两层,缩进显示)
+    - 点赞/删除操作(hover显示)
+  - Tab3 相关推荐:
+    - 纵向列表(缩略图+标题)
+    - 基于recommend-service推荐算法
+- 底部操作栏(固定在播放器下方):
+  - 点赞(图标+计数,点击动画)
+  - 投币(图标+计数,弹出选择框1/2币)
+  - 收藏(图标+计数,弹出选择收藏夹)
+  - 分享(复制链接/生成海报)
+  - 关注UP主(按钮状态切换)
+
+## 3.4 个人中心 (/user/:id)
+- 头部信息卡片:
+  - 大尺寸头像(80px,圆形)
+  - 昵称(字号24px)
+  - 个性签名(灰色小字)
+  - 等级徽章(Level 1-6,金色进度条)
+  - EXP进度条(纤细样式)
+- 数据统计栏(横向排列):
+  - 粉丝数 / 关注数 / 获赞数 / 播放总量
+  - 点击数字可查看列表
+- Tab切换:
+  - TA的视频(网格列表,同首页)
+  - TA的收藏(仅自己可见,需登录且为本人)
+  - 动态(时间轴样式,展示互动记录)
+- 编辑资料按钮(仅本人可见)
+
+## 3.5 管理员后台 (/admin/*)
+- 侧边栏导航(深色背景,固定左侧):
+  - Dashboard / 视频管理 / 用户管理 / 评论管理 / 数据统计
+  - 图标+文字,选中高亮
+- Dashboard首页:
+  - 关键指标卡片(日活/新增/播放/收入)
+  - 趋势图表(折线图/柱状图)
+- 视频管理:
+  - 表格列表(封面+标题+UP主+状态+操作)
+  - 批量操作(下架/删除/分类修改)
+  - 上传审核队列
+- 用户管理:
+  - 搜索筛选(用户名/手机号/注册时间)
+  - 封禁解封(开关按钮)
+  - 查看详情(抽屉式侧滑)
+- 评论管理:
+  - 敏感词高亮显示
+  - 批量删除违规评论
+- 数据统计:
+  - 多维度图表(用户增长/播放趋势/热门分区)
+  - 导出Excel功能
+
+# 4. 定制播放器要求
+
+## 4.1 ArtPlayer精简控件(极简设计)
+- 隐藏冗余: 
+  - 去掉原生Logo
+  - 去掉分享按钮
+  - 去掉设置面板多余项
+  - 去掉弹幕功能(如需可后期扩展)
+- 保留核心功能: 
+  - 播放/暂停(中央大按钮,半透明)
+  - 进度条(纤细金色,可拖拽预览)
+  - 音量控制(滑块样式)
+  - 倍速(0.5x/0.75x/1x/1.25x/1.5x/2x)
+  - 画质切换(自动/1080P/720P/480P)
+  - 画中画模式
+  - 全屏/退出全屏
+- 自定义UI适配轻奢风格:
+  - 控制栏背景: rgba(0,0,0,0.6) + backdrop-filter: blur(10px)
+  - 按钮颜色: 白色图标,hover变金色
+  - 进度条: 金色(#D4AF37),缓冲进度半透明白
+  - 字体: 系统默认 sans-serif
+
+## 4.2 核心功能实现
+- 播放记忆:
+  - 记录lastTime到localStorage
+  - 下次打开提示"从XX:XX继续播放?"
+  - 可选择跳过从头开始
+- 播放量上报:
+  - 播放超过30秒调用 POST /video/play/report
+  - 防止重复上报(去重逻辑)
+- 自动连播:
+  - 当前视频结束前5秒显示"下一个视频"
+  - 倒计时5秒自动播放(可取消)
+  - 从相关推荐获取下一视频
+- 加载失败处理:
+  - 显示占位图(简约错误图标)
+  - "重试"按钮(金色边框)
+  - 错误提示:"视频加载失败,请检查网络"
+- 快捷键支持:
+  - Space: 播放/暂停
+  - ←/→: 快退/快进5秒
+  - ↑/↓: 音量调节
+  - F: 全屏
+  - M: 静音
+
+## 4.3 视频流适配
+- 支持SpringBoot Range请求(断点续传)
+- 多清晰度切换:
+  - 根据网络状况自动推荐
+  - 手动切换立即生效
+  - 需要后端提供多清晰度URL
+- 预加载策略:
+  - 鼠标hover封面时预加载视频元数据
+  - 提升首屏播放速度
+
+# 5. 功能硬性要求
+
+## 5.1 性能优化
+- 视频列表懒加载: 
+  - IntersectionObserver API监听可视区域
+  - 进入视口才加载封面图
+- 图片懒加载: 
+  - v-lazy指令或原生loading="lazy"
+  - 占位图(低分辨率模糊版)
+- 虚拟滚动: 
+  - 长列表(评论/视频列表)使用虚拟DOM
+  - 仅渲染可视区域节点
+- 防抖节流: 
+  - 搜索框输入: debounce 300ms
+  - 滚动加载: throttle 500ms
+  - 窗口resize: throttle 200ms
+- 代码分割: 
+  - 路由懒加载 import()
+  - 大型组件异步加载
+
+## 5.2 交互细节
+- JWT过期处理: 
+  - Axios拦截器捕获code=401
+  - 清除localStorage Token
+  - 跳转/login页面
+  - Message.warning("登录已过期,请重新登录")
+- 未登录操作引导: 
+  - 点击收藏/点赞/投币/评论
+  - 弹出Modal对话框(居中,半透明遮罩)
+  - 文案:"登录后即可享受完整功能"
+  - 按钮:"去登录"(金色) / "稍后"(灰色)
+- 接口请求兜底: 
+  - 所有API请求catch错误
+  - 网络错误: Message.error("网络连接失败")
+  - 超时: Message.error("请求超时,请稍后重试")
+  - 500错误: Message.error("服务器异常")
+- 加载状态反馈: 
+  - 按钮: loading旋转图标,禁用点击
+  - 表格: Skeleton骨架屏(闪烁动画)
+  - 页面切换: 顶部进度条(NProgress)
+- 操作确认: 
+  - 删除/下架等危险操作: Popconfirm二次确认
+  - 文案:"确定要执行此操作吗?"
+
+## 5.3 分类联动
+- 从后端获取分区列表: GET /video/partitions
+  - 对应PartitionEnum(anime/game/tech/life...)
+- 首页点击分类标签:
+  - 路由query变化: /home?partition=anime
+  - 监听route变化,重新请求视频列表
+  - 保持滚动位置
+- URL参数同步:
+  - 刷新页面保持当前分类
+  - 浏览器前进后退正常响应
+
+## 5.4 搜索功能
+- 搜索框交互:
+  - 输入关键词,实时显示联想(最多10条)
+  - 回车或点击搜索按钮发起请求
+  - 搜索结果页: /search?keyword=xxx
+- 历史记录:
+  - localStorage保存最近10条
+  - 下拉展示,可清空
+- 热门搜索:
+  - 从后端获取TOP10关键词
+  - 标签云样式展示
+
+# 6. 代码规范
+
+## 6.1 项目分层结构
+src/
+├── api/                  # Axios封装+接口定义
+│   ├── request.js        # Axios实例配置+拦截器
+│   ├── user.js           # 用户相关接口
+│   ├── video.js          # 视频相关接口
+│   ├── interact.js       # 互动相关接口
+│   └── recommend.js      # 推荐相关接口
+├── utils/                # 工具函数
+│   ├── auth.js           # Token读写/验证
+│   ├── format.js         # 时间/数字格式化
+│   ├── storage.js        # localStorage封装
+│   └── validate.js       # 表单校验规则
+├── router/               # Vue Router配置
+│   ├── index.js          # 路由实例+全局守卫
+│   └── routes.js         # 路由表定义
+├── stores/               # Pinia状态管理
+│   ├── user.js           # 用户信息/登录状态
+│   ├── video.js          # 视频列表/播放状态
+│   └── app.js            # 全局配置(主题/语言)
+├── components/           # 公共组件
+│   ├── common/           # 通用组件
+│   │   ├── Header.vue    # 顶部导航
+│   │   ├── Sidebar.vue   # 侧边导航
+│   │   └── Footer.vue    # 页脚
+│   ├── video/            # 视频相关
+│   │   ├── VideoCard.vue     # 视频卡片
+│   │   ├── VideoGrid.vue     # 视频网格
+│   │   └── HealingPlayer.vue # 定制播放器
+│   ├── interaction/      # 互动组件
+│   │   ├── LikeButton.vue    # 点赞按钮
+│   │   ├── CoinButton.vue    # 投币按钮
+│   │   ├── CollectButton.vue # 收藏按钮
+│   │   └── CommentTree.vue   # 评论树
+│   └── admin/            # 管理后台组件
+│       ├── AdminLayout.vue   # 后台布局
+│       └── DataTable.vue     # 数据表格
+├── views/                # 页面组件
+│   ├── public/           # 公共页面
+│   │   ├── Login.vue
+│   │   ├── Register.vue
+│   │   └── NotFound.vue
+│   ├── home/             # 首页
+│   │   └── Home.vue
+│   ├── video/            # 视频详情
+│   │   └── VideoDetail.vue
+│   ├── user/             # 个人中心
+│   │   └── UserProfile.vue
+│   └── admin/            # 管理后台
+│       ├── Dashboard.vue
+│       ├── VideoManage.vue
+│       ├── UserManage.vue
+│       └── CommentManage.vue
+├── styles/               # 全局样式
+│   ├── main.css          # 入口样式
+│   ├── variables.css     # CSS变量(主题色)
+│   └── reset.css         # 样式重置
+├── App.vue               # 根组件
+└── main.js               # 应用入口
+
+## 6.2 Axios统一封装
+javascript // api/request.js import axios from 'axios' import { useUserStore } from '@/stores/user' import router from '@/router' import { Message } from 'naive-ui'
+const request = axios.create({ baseURL: 'http://localhost:8080', timeout: 10000, headers: { 'Content-Type': 'application/json' } })
+// 请求拦截: 自动注入Token request.interceptors.request.use( config => { const token = localStorage.getItem('userToken') if (token) { config.headers['User-Token'] = token } return config }, error => Promise.reject(error) )
+// 响应拦截: 统一错误处理 request.interceptors.response.use( response => { const { code, msg, data } = response.data if (code === 1) { return data } else if (code === 401) { // Token过期 useUserStore().logout() router.push('/login') Message.warning('登录已过期,请重新登录') return Promise.reject(new Error(msg)) } else { Message.error(msg || '请求失败') return Promise.reject(new Error(msg)) } }, error => { if (error.code === 'ECONNABORTED') { Message.error('请求超时,请稍后重试') } else if (!error.response) { Message.error('网络连接失败') } else { Message.error(服务器错误: ${error.response.status}) } return Promise.reject(error) } )
+export default request
+## 6.3 播放器全局组件封装
+vue
+<!-- components/video/HealingPlayer.vue -->
+<template> <div ref="playerRef" class="healing-player"></div> </template>
+<script setup> import { ref, onMounted, onBeforeUnmount } from 'vue' import Artplayer from 'artplayer' import { useVideoStore } from '@/stores/video' const props = defineProps({ src: { type: String, required: true }, poster: { type: String, default: '' }, autoplay: { type: Boolean, default: false }, videoId: { type: Number, required: true } }) const emit = defineEmits(['play-report', 'time-update']) const playerRef = ref(null) let player = null const videoStore = useVideoStore() onMounted(() => { player = new Artplayer({ container: playerRef.value, url: props.src, poster: props.poster, autoplay: props.autoplay, volume: 0.8, playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2], quality: [ { name: '自动', url: props.src }, { name: '1080P', url: props.src + '?quality=1080' }, { name: '720P', url: props.src + '?quality=720' }, { name: '480P', url: props.src + '?quality=480' } ], theme: '#D4AF37', // 金色主题 lang: 'zh-cn', controls: [ // 自定义控制栏配置 ] }) // 播放记忆 const lastTime = localStorage.getItem(`video_${props.videoId}_time`) if (lastTime && Number(lastTime) > 10) { player.seek(Number(lastTime)) } // 事件监听 player.on('timeupdate', () => { const currentTime = player.currentTime localStorage.setItem(`video_${props.videoId}_time`, currentTime) emit('time-update', currentTime) // 播放超过30秒上报 if (currentTime > 30 && !videoStore.reported[props.videoId]) { emit('play-report', props.videoId) videoStore.markReported(props.videoId) } }) player.on('ended', () => { // 自动连播逻辑 }) }) onBeforeUnmount(() => { if (player) { player.destroy() } }) </script>
+<style scoped> .healing-player { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 4px; } </style>
+使用示例:‘
+vue <HealingPlayer :src="videoUrl" :poster="coverUrl" :video-id="videoId" :autoplay="false" @play-report="handlePlayReport" @time-update="saveProgress" />
+
+

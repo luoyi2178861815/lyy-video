@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 调用 user-service 获取用户信息
@@ -19,5 +20,6 @@ public interface   UserFeignClient {
     Result<List<CommentUserVO>> getProfilesByIds(@RequestParam("ids") List<Long> ids);
 
     @GetMapping("/user/level/{userId}")
-    Result<Integer> getUserLevel(@PathVariable("userId") Long userId);
+    Result<Map<String, Object>> getUserLevelandCoin(@PathVariable("userId") Long userId);
+
 }

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -19,8 +20,10 @@ public class UserFeignFallback implements UserFeignClient {
 
     // 降级策略：默认返回 Lv1（允许投币），让后续逻辑判断
     @Override
-    public Result<Integer> getUserLevel(Long userId) {
+    public Result<Map<String, Object>> getUserLevelandCoin(Long userId) {
         log.error("获取用户等级失败,默认允许投币：userId = {}", userId);
-        return Result.success(1);
+        return Result.success(Map.of("level", 1, "coin", 1));
     }
+
+
 }

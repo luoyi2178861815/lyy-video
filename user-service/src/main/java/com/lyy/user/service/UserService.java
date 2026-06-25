@@ -42,4 +42,7 @@ public interface UserService {
     Integer getUserLevel(Long userId);
     void updateRealNameVerified(Long userId);
 
+    Long getUserCoinCount(Long userId);
+
+    String getAuthorNameByUserId(Long userId);
 }

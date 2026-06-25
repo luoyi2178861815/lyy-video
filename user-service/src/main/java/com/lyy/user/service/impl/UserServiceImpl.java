@@ -217,6 +217,7 @@ public class UserServiceImpl implements UserService {
         return expService.getRecentRecords(userId);
     }
 
+    //获取用户等级
     @Override
     public Integer getUserLevel(Long userId) {
         return userMapper.selectLevelById(userId);
@@ -228,6 +229,22 @@ public class UserServiceImpl implements UserService {
         update.setId(userId);
         update.setRealNameVerified(1);
         userMapper.updateById(update);
+    }
+
+    //获取用户硬币数
+    public Long getUserCoinCount(Long userId) {
+        User user = userMapper.selectById(userId);
+        return user.getCoinCount();
+    }
+
+    @Override
+    public String getAuthorNameByUserId(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user != null) {
+            return user.getNickname();
+        }
+        log.warn("用户 {} 不存在", userId);
+        return "未知用户";
     }
 
     // ==================== 工具方法 ====================
