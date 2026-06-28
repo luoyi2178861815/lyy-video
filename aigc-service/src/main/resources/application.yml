@@ -2,6 +2,10 @@
 server:
   port: 1000
 spring:
+    # Elasticsearch 配置
+  elasticsearch:
+    uris: http://127.0.0.1:19200
+
   application:
     name: aigc-service
   # SpringBoot3 核心必填，导入nacos公共配置
@@ -45,6 +49,18 @@ spring:
         options:
           model: text-embedding-v3
           dimensions: 1024
+    #          向量库配置
+    vectorstore:
+      # redis向量库配置
+      redis:
+        initialize-schema: true
+        index-name: custom-index
+        prefix: custom-prefix
+        #es向量库配置
+      elasticsearch:
+        initialize-schema: true
+        dimensions: 1024
+
 
 
 mybatis:

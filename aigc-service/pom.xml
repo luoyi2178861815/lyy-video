@@ -15,6 +15,9 @@
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <co.elastic.clients.version>8.18.6</co.elastic.clients.version>
+        <org.springframework.ai.version>1.1.1</org.springframework.ai.version>
+
     </properties>
     <dependencies> <!--web-->
         <dependency>
@@ -83,7 +86,42 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
-
+        <!--        spring ai 向量库-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-advisors-vector-store</artifactId>
+            <version>${org.springframework.ai.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-elasticsearch</artifactId>
+            <version>${org.springframework.ai.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>co.elastic.clients</groupId>
+                    <artifactId>elasticsearch-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.elasticsearch.client</groupId>
+                    <artifactId>elasticsearch-rest-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+            <version>${co.elastic.clients.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-client</artifactId>
+            <version>${co.elastic.clients.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-redis</artifactId>
+            <version>${org.springframework.ai.version}</version>
+        </dependency>
         <!-- Knife4j OpenAPI3 Jakarta -->
         <dependency>
             <groupId>com.github.xiaoymin</groupId>
@@ -108,7 +146,7 @@
             </execution>
         </executions>
         <configuration>
-            <mainClass>com.tianji.AIGCApplication</mainClass>
+            <mainClass>com.lyy.AIGCApplication</mainClass>
         </configuration>
     </plugin>
 </plugins>

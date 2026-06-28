@@ -19,7 +19,7 @@ public class AsyncConfig {
         executor.setQueueCapacity(1000);
         executor.setThreadNamePrefix("mq-async-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        log.error("初始化异步处理投币消息线程池......");
+        log.info("初始化异步处理投币消息线程池......");
         return executor;
     }
 }

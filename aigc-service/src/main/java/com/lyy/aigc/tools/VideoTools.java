@@ -1,10 +1,12 @@
 package com.lyy.aigc.tools;
 
+import com.lyy.aigc.config.ToolResultHolder;
 import com.lyy.aigc.constants.Constant;
 import com.lyy.aigc.feign.UserFeignClient;
 import com.lyy.aigc.feign.VideoFeignClient;
 import com.lyy.aigc.tools.result.VideoInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,8 +28,8 @@ public class VideoTools {
     private UserFeignClient userFeignClient;
 
     @Tool(description = Constant.Tools.QUERY_VIDEO_BY_ID)
-    public VideoInfo queryVideoById(@ToolParam(description = Constant.ToolParams.VIDEO_ID) Long videoId){
-        log.info("queryVideoById: {}", videoId);
+    public VideoInfo queryVideoById(@ToolParam(description = Constant.ToolParams.VIDEO_ID) Long videoId , ToolContext toolContext){
+        log.info("大模型调用查询工具，queryVideoById: {}", videoId);
         try {
             return Optional.ofNullable(videoId)
                     .map(id -> {
@@ -45,6 +47,11 @@ public class VideoTools {
                             .duration(String.valueOf(stringObjectMap.get("duration")))
                             .playUrl((String) stringObjectMap.get("videoUrl"))
                             .build())
+                    .map(videoInfo -> {
+                       var requestId = toolContext.getContext().get(Constant.REQUEST_ID);
+                        ToolResultHolder.put((String) requestId,"videoInfo_"+videoInfo.getVideoId(),videoInfo);
+                        return videoInfo;
+                    })
                     .orElse(null);
         } catch (Exception e) {
             log.error("查询视频失败, videoId: {}", videoId, e);

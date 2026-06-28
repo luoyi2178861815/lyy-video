@@ -52,7 +52,9 @@
 
     <!-- ==================== 依赖管理（仅声明，子模块按需引入） ==================== -->
     <dependencyManagement>
+
         <dependencies>
+
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>

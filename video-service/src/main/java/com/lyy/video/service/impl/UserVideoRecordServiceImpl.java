@@ -59,17 +59,10 @@ public class UserVideoRecordServiceImpl implements UserVideoRecordService {
         }
         // 每日观看经验（每天首次播放即触发）
         //判断用户是否今天看过视频
-        UserVideoRecord record1= userVideoRecordMapper.getRecord(userId, videoId);
-        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-        if (record1.getLastUpdateTime().isBefore(today)) {
-            ExpMessage watchExpMsg = ExpMessage.of(userId, 5, "daily_watch");
-            rabbitTemplate.convertAndSend(MqConstant.EXP_EXCHANGE, MqConstant.EXP_ROUTING_KEY, watchExpMsg);
-            log.info("发送每日观看经验消息：userId={}", userId);
-        }
-        if (videoId == null || videoMapper.exists(videoId) == 0) {
-            throw new VideoNotFoundException("视频不存在");
-        }
         UserVideoRecord existingRecord = userVideoRecordMapper.getRecord(userId, videoId);
+        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+
+
         if (existingRecord == null) {
             Video video = videoMapper.getVideoInfo(videoId);
             UserVideoRecord record = new UserVideoRecord();
@@ -86,6 +79,14 @@ public class UserVideoRecordServiceImpl implements UserVideoRecordService {
             ExpMessage watchExpMsg = ExpMessage.of(userId, 5, "daily_watch");
             rabbitTemplate.convertAndSend(MqConstant.EXP_EXCHANGE, MqConstant.EXP_ROUTING_KEY, watchExpMsg);
             log.info("发送每日观看经验消息：userId={}", userId);
+        }
+        if (existingRecord != null && existingRecord.getLastUpdateTime().isBefore(today)) {
+            ExpMessage watchExpMsg = ExpMessage.of(userId, 5, "daily_watch");
+            rabbitTemplate.convertAndSend(MqConstant.EXP_EXCHANGE, MqConstant.EXP_ROUTING_KEY, watchExpMsg);
+            log.info("发送每日观看经验消息：userId={}", userId);
+        }
+        if (videoId == null || videoMapper.exists(videoId) == 0) {
+            throw new VideoNotFoundException("视频不存在");
         }
     }
 

@@ -10,6 +10,7 @@ import com.lyy.aigc.entity.vo.MessageVO;
 import com.lyy.aigc.entity.vo.SessionVO;
 import com.lyy.aigc.enums.MessageTypeEnum;
 import com.lyy.aigc.mapper.ChatSessionMapper;
+import com.lyy.aigc.memory.MyAssistantMessage;
 import com.lyy.aigc.service.ChatService;
 import com.lyy.aigc.service.ChatSessionService;
 import com.lyy.common.context.BaseContext;
@@ -63,10 +64,19 @@ public class ChatSessionServiceImpl implements ChatSessionService {
             List<Message> messages = this.chatMemory.get(conversationId);
             return StreamUtil.of(messages)
                     .filter(message -> message.getMessageType() == MessageType.ASSISTANT || message.getMessageType() == MessageType.USER)
-                    .map(message -> MessageVO.builder()
-                            .content(message.getText())
-                            .type(MessageTypeEnum.valueOf(message.getMessageType().name()))
-                            .build())
+                    .map(message -> {
+                        if (message instanceof MyAssistantMessage myAssistantMessage) {
+                            return MessageVO.builder()
+                                    .content(message.getText())
+                                    .type(MessageTypeEnum.valueOf(message.getMessageType().name()))
+                                    .params(myAssistantMessage.getParams())
+                                    .build();
+                        }
+                        return MessageVO.builder()
+                                .content(message.getText())
+                                .type(MessageTypeEnum.valueOf(message.getMessageType().name()))
+                                .build();
+                    })
                     .toList();
         } catch (Exception e) {
             log.error("chatMemory.get 异常", e);

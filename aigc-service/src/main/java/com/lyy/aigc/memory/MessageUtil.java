@@ -2,7 +2,11 @@ package com.lyy.aigc.memory;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.json.JSONUtil;
+import com.lyy.aigc.config.ToolResultHolder;
+import com.lyy.aigc.constants.Constant;
 import org.springframework.ai.chat.messages.*;
+
+import java.util.Map;
 
 /**
  * 消息转换工具类，提供消息对象与JSON字符串之间的转换功能，主要用于Redis存储格式转换
@@ -21,6 +25,14 @@ public class MessageUtil {
         myMessage.setTextContent(message.getText());
         if (message instanceof AssistantMessage assistantMessage) {
             myMessage.setToolCalls(assistantMessage.getToolCalls());
+            //获取到工具调用的结果，设置到消息对象中
+            var messageId = message.getMetadata().get("id");
+            var requestId = ToolResultHolder.get(messageId.toString(), Constant.REQUEST_ID);
+            Map<String, Object> paramsMap = ToolResultHolder.get(requestId.toString());
+            if (paramsMap != null) {
+                myMessage.setParams(paramsMap);
+            }
+            ToolResultHolder.remove(requestId.toString());
         }
 
         if (message instanceof ToolResponseMessage toolResponseMessage) {
@@ -52,12 +64,13 @@ public class MessageUtil {
                         .build();
             }
             case ASSISTANT -> {
-                return AssistantMessage.builder()
-                        .content(myMessage.getTextContent())
-                        .toolCalls(myMessage.getToolCalls())
-                        .media(myMessage.getMedia())
-                        .properties(myMessage.getMetadata())
-                        .build();
+                return new MyAssistantMessage(
+                        myMessage.getTextContent(),
+                        myMessage.getMetadata(),
+                        myMessage.getToolCalls(),
+                        myMessage.getMedia(),
+                        myMessage.getParams()
+                );
             }
             case TOOL -> {
                 return ToolResponseMessage.builder()
