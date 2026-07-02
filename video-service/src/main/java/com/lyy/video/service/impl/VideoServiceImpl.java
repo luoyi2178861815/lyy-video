@@ -15,21 +15,31 @@ import com.lyy.video.mapper.UserVideoRecordMapper;
 import com.lyy.video.mapper.VideoMapper;
 import com.lyy.video.service.VideoService;
 import com.lyy.video.utils.VideoUtil;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.alibaba.fastjson2.JSONValidator.Type.Array;
 
 
 @Service
 @Slf4j
+@AllArgsConstructor
 public class VideoServiceImpl implements VideoService {
 
     @Autowired
@@ -40,7 +50,12 @@ public class VideoServiceImpl implements VideoService {
     private InteractionFeignClient interactionFeignClient;
     @Autowired
     private UserFeignClient userFeignClient;
-    
+
+    private RedisTemplate<Object, Object> redisTemplate;
+
+    private static final String VIDEO_INFO_BASE_PREFIX = "video:base:";
+    private static final String VIDEO_INFO_STAT_PREFIX = "video:stat:";
+
     @Override
     public void uploadVideo(VideoUploadDTO dto) {
         Long userId = BaseContext.getCurrentId();
@@ -76,36 +91,60 @@ public class VideoServiceImpl implements VideoService {
      */
     @Transactional
     public VideoInfoVO getVideoInfo(Long videoId) {
-        Video video = videoMapper.getVideoInfo(videoId);
-        video.setId(video.getId());
+        // 从Redis缓存中获取视频信息,基本信息和互动信息分开，baseInfo做兜底，statInfo补充
         if (videoId == null) {
-            throw new VideoNotFoundException("视频不存在");
+        throw new VideoNotFoundException("视频不存在");
+        }
+        Video video;
+        Map<Object, Object> videoBaseInfo = redisTemplate.opsForHash().entries(VIDEO_INFO_BASE_PREFIX + videoId);
+        Map<Object, Object> videoStatInfo = redisTemplate.opsForHash().entries(VIDEO_INFO_STAT_PREFIX + videoId);
+
+        if (videoBaseInfo.isEmpty()) {
+            video = videoMapper.getVideoInfo(videoId);
+            if (video == null) {
+                throw new VideoNotFoundException("视频不存在");
+            }
+            redisTemplate.opsForHash().put(VIDEO_INFO_BASE_PREFIX + videoId, "video", video);
+            redisTemplate.expire(VIDEO_INFO_BASE_PREFIX + videoId, 7, TimeUnit.DAYS);
+        } else {
+            video = (Video) videoBaseInfo.get("video");
+        }
+        if (!videoStatInfo.isEmpty()){
+            Number playCount = (Number) videoStatInfo.get("playCount");
+            if (playCount != null) video.setPlayCount(playCount.longValue());
+            Number likeCount = (Number) videoStatInfo.get("likeCount");
+            if (likeCount != null) video.setLikeCount(likeCount.longValue());
+            Number coinCount = (Number) videoStatInfo.get("coinCount");
+            if (coinCount != null) video.setCoinCount(coinCount.longValue());
+            Number collectCount = (Number) videoStatInfo.get("collectCount");
+            if (collectCount != null) video.setCollectCount(collectCount.longValue());
+            Number commentCount = (Number) videoStatInfo.get("commentCount");
+            if (commentCount != null) video.setCommentCount(commentCount.longValue());
         }
         Long userId = BaseContext.getCurrentId();
-        // 用户未登录
-        if (userId == null) {
-            return changeToVideoInfoVO(video);
-        }
-        //1.获取私密视频
-        if(video.getStatus() != null && video.getStatus() == 4){
-            if(!userId.equals(video.getUserId())){
-                throw new BusinessException("私密视频不存在");
+            // 用户未登录
+            if (userId == null) {
+                return changeToVideoInfoVO(video);
             }
-            return changeToVideoInfoVO(video, userId);
-        }
-        //2.视频正在审核中
-        if(video.getStatus() != null && video.getStatus() == 3){
-            throw new BusinessException("视频正在审核中");
-        }
-        //3.视频已下架
-        if(video.getStatus() != null && video.getStatus() == 2){
-            throw new BusinessException("视频已下架");
-        }
+            //1.获取私密视频
+            if (video.getStatus() != null && video.getStatus() == 4) {
+                if (!userId.equals(video.getUserId())) {
+                    throw new BusinessException("私密视频不存在");
+                }
+                return changeToVideoInfoVO(video, userId);
+            }
+            //2.视频正在审核中
+            if (video.getStatus() != null && video.getStatus() == 3) {
+                throw new BusinessException("视频正在审核中");
+            }
+            //3.视频已下架
+            if (video.getStatus() != null && video.getStatus() == 2) {
+                throw new BusinessException("视频已下架");
+            }
+
         //4.正常视频获取信息
         return changeToVideoInfoVO(video, userId);
     }
-
-
     /*
     * 更新视频的评论数
     * */
@@ -154,9 +193,9 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public PageResult pageVideos(Integer partitionCode, String sort, int pageNum, int pageSize) {
+    public PageResult pageVideos(Integer partitionCode,  int pageNum, int pageSize) {
         int offset = (pageNum - 1) * pageSize;
-        List<Video> list = videoMapper.pageVideos(partitionCode, sort, offset, pageSize);
+        List<Video> list = videoMapper.pageVideos(partitionCode, offset, pageSize);
         long total = videoMapper.countPageVideos(partitionCode);
         return new PageResult(total, list);
     }
@@ -202,36 +241,38 @@ public class VideoServiceImpl implements VideoService {
         VideoInfoVO videoInfoVO = new VideoInfoVO();
         videoInfoVO.setVideoId(video.getId());
         BeanUtils.copyProperties(video, videoInfoVO);
-        //获取视频作者名称
-        String authorName = userFeignClient.getUserByUsername(video.getUserId()).getData();
-        videoInfoVO.setAuthorName(authorName);
-        //获取用户观看进度
-        if (userVideoRecordMapper.getProgress(userId, video.getId()) != null) {
-            Integer watchDuration = userVideoRecordMapper.getProgress(userId, video.getId());
-            videoInfoVO.setWatchDuration(watchDuration);
-        }
-        else{
-            videoInfoVO.setWatchDuration(0);
-        }
-        //获取用户点赞状态
-        if (interactionFeignClient.isLike(video.getId(), userId).getData()) {
-            videoInfoVO.setIsLiked(1);
-        } else {
-            videoInfoVO.setIsLiked(0);
-        }
-        //获取用户收藏状态
-        if (interactionFeignClient.isCollect(video.getId(), userId).getData()) {
-            videoInfoVO.setIsCollected(1);
-        } else {
-            videoInfoVO.setIsCollected(0);
-        }
-        //获取用户投币状态
-        Result<Boolean> coinResult = interactionFeignClient.isCoined(video.getId(), userId);
-        if (coinResult != null && coinResult.getData() != null && coinResult.getData()) {
-            videoInfoVO.setIsCoined(1);
-        } else {
-            videoInfoVO.setIsCoined(0);
-        }
+        //并行化获取视频信息
+
+        CompletableFuture<String> authorNameFuture = CompletableFuture.supplyAsync(() ->
+                userFeignClient.getUserByUsername(video.getUserId()).getData()
+        );
+
+        CompletableFuture<Integer> watchDurationFuture = CompletableFuture.supplyAsync(() -> {
+            Integer progress = userVideoRecordMapper.getProgress(userId, video.getId());
+            return progress != null ? progress : 0;
+        });
+
+        CompletableFuture<Boolean> isLikeFuture = CompletableFuture.supplyAsync(() ->
+                interactionFeignClient.isLike(video.getId(), userId).getData()
+        );
+
+        CompletableFuture<Boolean> isCollectFuture = CompletableFuture.supplyAsync(() ->
+                interactionFeignClient.isCollect(video.getId(), userId).getData()
+        );
+
+        CompletableFuture<Boolean> isCoinedFuture = CompletableFuture.supplyAsync(() -> {
+            Result<Boolean> coinResult = interactionFeignClient.isCoined(video.getId(), userId);
+            return coinResult != null && coinResult.getData() != null && coinResult.getData();
+        });
+
+        CompletableFuture.allOf(authorNameFuture, watchDurationFuture, isLikeFuture, isCollectFuture, isCoinedFuture).join();
+
+        videoInfoVO.setAuthorName(authorNameFuture.join());
+        videoInfoVO.setWatchDuration(watchDurationFuture.join());
+        videoInfoVO.setIsLiked(isLikeFuture.join() ? 1 : 0);
+        videoInfoVO.setIsCollected(isCollectFuture.join() ? 1 : 0);
+        videoInfoVO.setIsCoined(isCoinedFuture.join() ? 1 : 0);
+
         return videoInfoVO;
     }
 }

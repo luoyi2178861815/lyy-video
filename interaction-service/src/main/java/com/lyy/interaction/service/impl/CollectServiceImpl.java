@@ -149,7 +149,6 @@ public class CollectServiceImpl implements CollectService {
 
     // ==================== 收藏/取消收藏 ====================
 
-    @Override
     @Transactional
     public void collectVideo(Long userId, CollectAddDTO dto) {
         // 验证视频存在并获取封面
@@ -158,7 +157,7 @@ public class CollectServiceImpl implements CollectService {
         if (videoInfo == null) {
             throw new VideoNotFoundException("视频不存在或已删除");
         }
-        String coverUrl = (String) videoInfo.get("coverUrl");
+        String coverUrl = (String) videoInfo.get("coverUrl"); 
         // 检查是否已收藏
         if (collectMapper.exists(userId, dto.getVideoId()) > 0) {
             throw new BusinessException("已收藏过该视频");

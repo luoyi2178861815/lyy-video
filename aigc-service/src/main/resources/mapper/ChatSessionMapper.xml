@@ -7,8 +7,27 @@
     </sql>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO chat_session (session_id, user_id, create_time, creater, updater)
-        VALUES (#{sessionId}, #{userId}, #{createTime}, #{creater}, #{updater})
+        INSERT INTO chat_session (session_id, user_id, create_time, update_time, creater, updater)
+        VALUES (#{sessionId}, #{userId}, #{createTime}, #{updateTime}, #{creater}, #{updater})
     </insert>
+    <update id="updateById">
+        UPDATE chat_session
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updater != null">updater = #{updater},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="deleteBySessionId">
+        DELETE FROM chat_session WHERE session_id = #{sessionId} AND user_id = #{userId}
+    </delete>
+    <select id="selectBySessionId" resultType="com.lyy.aigc.entity.po.ChatSession">
+        SELECT * FROM chat_session WHERE session_id = #{sessionId} AND user_id = #{userId}
+    </select>
+    <select id="selectByUserId" parameterType="java.lang.Long" resultType="com.lyy.aigc.entity.po.ChatSession">
+        SELECT * FROM chat_session WHERE user_id = #{userId}
+        ORDER BY create_time DESC LIMIT 30
+    </select>
 
 </mapper>

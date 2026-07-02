@@ -32,7 +32,6 @@ public interface VideoMapper {
     long countSearchVideos(@Param("keyword") String keyword);
 
     List<Video> pageVideos(@Param("partitionCode") Integer partitionCode,
-                            @Param("sort") String sort,
                             @Param("offset") int offset,
                             @Param("pageSize") int pageSize);
 

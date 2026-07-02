@@ -17,7 +17,7 @@ public class SessionVO {
     /**
      * 会话ID，用于唯一标识当前的AI助手会话。
      */
-    private String sessionId;
+    private String Id;
 
     /**
      * AI助手的标题，用于显示助手的名称或身份。

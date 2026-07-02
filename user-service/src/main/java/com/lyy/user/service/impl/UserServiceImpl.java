@@ -10,6 +10,7 @@ import com.lyy.user.entity.dto.UserUpdateDTO;
 import com.lyy.user.entity.po.ExpRecord;
 import com.lyy.user.entity.po.User;
 import com.lyy.user.entity.vo.UserProfileVO;
+import com.lyy.user.mapper.ExpRecordMapper;
 import com.lyy.user.mapper.UserMapper;
 import com.lyy.user.service.ExpService;
 import com.lyy.user.service.UserService;
@@ -34,6 +35,9 @@ public class UserServiceImpl implements UserService {
     private ExpService expService;
 
     @Autowired
+    private ExpRecordMapper expRecordMapper;
+
+    @Autowired
     private RabbitTemplate rabbitTemplate;
 
     // ==================== C端业务 ====================
@@ -55,10 +59,15 @@ public class UserServiceImpl implements UserService {
         if (user.getStatus() == 0) {
             throw new BusinessException(403, "您的账号已被封禁");
         }
-        // 登录经验：发送 MQ 消息
-        ExpMessage loginExpMsg = ExpMessage.of(user.getId(), 5, "daily_login");
-        rabbitTemplate.convertAndSend(MqConstant.EXP_EXCHANGE, MqConstant.EXP_ROUTING_KEY, loginExpMsg);
-        log.info("发送每日登录经验消息：userId={}", user.getId());
+        // 登录经验：先检查今日是否已领取
+        int todayLoginCount = expRecordMapper.countTodayByReason(user.getId(), "daily_login");
+        if (todayLoginCount == 0) {
+            ExpMessage loginExpMsg = ExpMessage.of(user.getId(), 5, "daily_login");
+            rabbitTemplate.convertAndSend(MqConstant.EXP_EXCHANGE, MqConstant.EXP_ROUTING_KEY, loginExpMsg);
+            log.info("发送每日登录经验消息：userId={}", user.getId());
+        } else {
+            log.info("今日登录经验已领取，跳过：userId={}", user.getId());
+        }
         return user;
     }
 

@@ -7,6 +7,8 @@ import com.lyy.aigc.constants.Constant;
 import com.lyy.aigc.entity.dto.ChatDTO;
 import com.lyy.aigc.entity.vo.ChatEventVO;
 import com.lyy.aigc.service.ChatService;
+import com.lyy.aigc.service.ChatSessionService;
+import com.lyy.common.context.BaseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
@@ -37,6 +39,8 @@ public class ChatServiceImpl implements ChatService {
     private ChatMemory chatMemory;
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private ChatSessionService chatSessionService;
     //通过一个容器，保存sessionId以及是否继续生成的标识
 //    private static final Map<String, Boolean> sessionIdMap = new ConcurrentHashMap<>();
     private static final String STATUS_KEY = "chat:status:";
@@ -55,6 +59,7 @@ public class ChatServiceImpl implements ChatService {
                 )
                 .build();
 
+        chatSessionService.update(chatDTO.getSessionId(), chatDTO.getQuestion(), BaseContext.getCurrentId());
         // 用于保存停止输出的记录
         StringBuilder stopHistoryContent = new StringBuilder();
         BoundHashOperations<String, Object, Object> hashOps = stringRedisTemplate.boundHashOps(STATUS_KEY);

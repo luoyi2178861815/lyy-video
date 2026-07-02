@@ -1,6 +1,7 @@
 package com.lyy.interaction.service.impl;
 
 import com.lyy.common.constant.MqConstant;
+import com.lyy.common.constant.RedisKey;
 import com.lyy.common.dto.LikeIncrementMessage;
 import com.lyy.common.exception.BusinessException;
 import com.lyy.common.exception.VideoNotFoundException;
@@ -11,8 +12,10 @@ import com.lyy.interaction.entity.vo.VideoLikeVO;
 import com.lyy.interaction.feign.VideoFeignClient;
 import com.lyy.interaction.mapper.VideoLikeMapper;
 import com.lyy.interaction.service.VideoLikeService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class VideoLikeServiceImpl implements VideoLikeService {
 
@@ -29,55 +33,72 @@ public class VideoLikeServiceImpl implements VideoLikeService {
     private VideoFeignClient videoFeignClient;
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private RedisTemplate<Object, Object> redisTemplate;
+
+    private static final String USER_LIKE_KEY_PREFIX = "like:user:";
 
     /*
      * 点赞视频功能（toggle）
      */
     @Transactional
     public boolean likeVideo(Long videoId, Long userId) {
-        // 参数校验
-        if (videoId == null) {
-            throw new BusinessException("视频ID不能为空");
-        }
-        if (userId == null) {
-            throw new BusinessException("用户不存在或者未登录");
-        }
+        // 1. 参数校验
+        if (videoId == null || userId == null) throw new BusinessException("参数不能为空");
 
-        // 判断视频是否存在（Feign 调用 video-service）
-        Result<Integer> result = videoFeignClient.exists(videoId);
-        int exists = (result != null && result.getCode() == 1) ? result.getData() : 0;
-        if (exists == 0) {
-            throw new VideoNotFoundException("视频不存在或已删除");
+        // 2. 校验视频是否存在（复用你原有逻辑，优化Redis查询写法）
+        String baseKey = RedisKey.VIDEO_INFO_BASE_PREFIX + videoId;
+        Boolean hasVideo = redisTemplate.opsForHash().hasKey(baseKey, "video");
+        if (!Boolean.TRUE.equals(hasVideo)) {
+            Result<Integer> result = videoFeignClient.exists(videoId);
+            if (result.getData() == 0) throw new VideoNotFoundException("视频不存在或已删除");
         }
 
-        // 更新用户的点赞数消息
-        LikeIncrementMessage likeIncrementMessageToUser = LikeIncrementMessage.buildUserMsg(userId, 1);
-        // 更新视频的点赞数消息
-        LikeIncrementMessage likeIncrementMessageToVideo = new LikeIncrementMessage();
-        likeIncrementMessageToVideo.setVideoId(videoId);
+        // -------------redis缓存
+        String userLikeKey = USER_LIKE_KEY_PREFIX + userId;
+        // 原子判断用户是否点赞
+        Boolean isLiked = redisTemplate.opsForSet().isMember(userLikeKey, videoId.toString());
+        String statKey = RedisKey.VIDEO_INFO_STAT_PREFIX + videoId;
 
-        int exits = videoLikeMapper.exits(videoId, userId);
-        if (exits > 0) {
-            // 已点赞 → 取消点赞
-            likeIncrementMessageToVideo.setIncrement(-1);
-            likeIncrementMessageToUser.setIncrement(-1);
+        if (Boolean.TRUE.equals(isLiked)) {
+            // 已点赞：取消点赞
+            // Redis原子操作：移除点赞记录、点赞数-1
+            log.info("User {}取消点赞 video {}", userId, videoId);
+            redisTemplate.opsForSet().remove(userLikeKey, videoId.toString());
+            redisTemplate.opsForHash().increment(statKey, "likeCount", -1);
+
+            // DB删除点赞记录
             videoLikeMapper.deletelike(videoId, userId);
-            rabbitTemplate.convertAndSend(MqConstant.USER_LIKE_EXCHANGE, MqConstant.USER_LIKE_ROUTING_KEY, likeIncrementMessageToUser);
-            rabbitTemplate.convertAndSend(MqConstant.VIDEO_LIKE_EXCHANGE, MqConstant.VIDEO_LIKE_ROUTING_KEY, likeIncrementMessageToVideo);
+            // 发MQ同步DB计数
+            sendMqMsg(userId, videoId, -1);
             return false;
         } else {
-            // 未点赞 → 点赞
-            likeIncrementMessageToVideo.setIncrement(1);
-            likeIncrementMessageToUser.setIncrement(1);
+            // 未点赞：新增点赞
+            // Redis原子操作：添加点赞记录、点赞数+1
+            log.info("User {}点赞 video {}", userId, videoId);
+            redisTemplate.opsForSet().add(userLikeKey, videoId.toString());
+            redisTemplate.opsForHash().increment(statKey, "likeCount", 1);
+
+            // DB插入点赞记录
             VideoLike videoLike = new VideoLike();
             videoLike.setVideoId(videoId);
             videoLike.setUserId(userId);
             videoLike.setCreateTime(LocalDateTime.now());
             videoLikeMapper.like(videoLike);
-            rabbitTemplate.convertAndSend(MqConstant.USER_LIKE_EXCHANGE, MqConstant.USER_LIKE_ROUTING_KEY, likeIncrementMessageToUser);
-            rabbitTemplate.convertAndSend(MqConstant.VIDEO_LIKE_EXCHANGE, MqConstant.VIDEO_LIKE_ROUTING_KEY, likeIncrementMessageToVideo);
+            // 发MQ同步DB计数
+            sendMqMsg(userId, videoId, 1);
             return true;
         }
+    }
+
+    // 抽离MQ发送方法，简化代码
+    private void sendMqMsg(Long userId, Long videoId, int incr) {
+        LikeIncrementMessage userMsg = LikeIncrementMessage.buildUserMsg(userId, incr);
+        LikeIncrementMessage videoMsg = new LikeIncrementMessage();
+        videoMsg.setVideoId(videoId);
+        videoMsg.setIncrement(incr);
+        rabbitTemplate.convertAndSend(MqConstant.USER_LIKE_EXCHANGE, MqConstant.USER_LIKE_ROUTING_KEY, userMsg);
+        rabbitTemplate.convertAndSend(MqConstant.VIDEO_LIKE_EXCHANGE, MqConstant.VIDEO_LIKE_ROUTING_KEY, videoMsg);
     }
 
     /*

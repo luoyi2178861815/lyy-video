@@ -71,4 +71,5 @@ public class AdminUserController {
         userService.changeUserStatus(id, status);
         return Result.success(status == 1 ? "已解封" : "已封禁");
     }
+
 }

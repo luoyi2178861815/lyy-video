@@ -47,7 +47,7 @@ public class PlayVideoController {
      */
     @GetMapping("/{videoId}")
     public Result<VideoInfoVO> getVideoInfo(@PathVariable("videoId") Long videoId) {
-        log.info("用户获取视频信息：{}", videoId);
+        log.info("用户获取视频信息videoId：{}", videoId);
         VideoInfoVO videoInfoVO = videoService.getVideoInfo(videoId);
         return Result.success(videoInfoVO);
     }
@@ -107,11 +107,10 @@ public class PlayVideoController {
      */
     @GetMapping("/page")
     public Result<PageResult> pageVideos(@RequestParam(required = false) Integer partition,
-                                         @RequestParam(defaultValue = "hot") String sort,
                                          @RequestParam(value = "page", defaultValue = "1") int pageNum,
                                          @RequestParam(defaultValue = "15") int pageSize) {
-        log.info("视频分页查询：partition={}, sort={}, pageNum={}, pageSize={}", partition, sort, pageNum, pageSize);
-        PageResult result = videoService.pageVideos(partition, sort, pageNum, pageSize);
+        log.info("视频分页查询：partition={}, pageNum={}, pageSize={}", partition, pageNum, pageSize);
+        PageResult result = videoService.pageVideos(partition, pageNum, pageSize);
         return Result.success(result);
     }
 

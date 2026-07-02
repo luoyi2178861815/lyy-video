@@ -7,7 +7,6 @@ public class VideoInfoVO {
     //返回视频基本信息
     private Long videoId;
     private String videoUrl;
-    private String coverUrl;
     private String title;
     private String introduction;
     private Integer statementCode;

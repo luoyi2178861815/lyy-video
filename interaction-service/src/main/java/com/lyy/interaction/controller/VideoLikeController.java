@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -25,7 +26,6 @@ public class VideoLikeController {
     @PostMapping("/{videoId}/like")
     public Result<Map<String, Object>> likeVideo(@PathVariable Long videoId) {
         Long userId = BaseContext.getCurrentId();
-        log.info("用户 {} toggle点赞 视频 {}", userId, videoId);
         boolean liked = videoLikeService.likeVideo(videoId, userId);
         return Result.success(Map.of("liked", liked));
     }

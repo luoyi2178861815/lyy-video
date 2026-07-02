@@ -28,7 +28,7 @@ public interface VideoService {
 
     PageResult searchVideos(String keyword, int pageNum, int pageSize);
 
-    PageResult pageVideos(Integer partitionCode, String sort, int pageNum, int pageSize);
+    PageResult pageVideos(Integer partitionCode, int pageNum, int pageSize);
 
     List<MyVideoVO> getMyVideos(int pageNum, int pageSize);
 }
