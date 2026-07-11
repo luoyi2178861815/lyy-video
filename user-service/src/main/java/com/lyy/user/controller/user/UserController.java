@@ -1,9 +1,7 @@
 package com.lyy.user.controller.user;
 
-import com.lyy.common.constant.JwtClaimsConstant;
 import com.lyy.common.context.BaseContext;
 import com.lyy.common.result.Result;
-import com.lyy.common.utils.JwtUtil;
 import com.lyy.user.entity.dto.UserLoginDTO;
 import com.lyy.user.entity.dto.UserPasswordDTO;
 import com.lyy.user.entity.dto.UserUpdateDTO;
@@ -12,15 +10,17 @@ import com.lyy.user.entity.po.User;
 import com.lyy.user.entity.vo.UserLoginVO;
 import com.lyy.user.entity.vo.UserProfileVO;
 import com.lyy.user.service.ExpService;
+import com.lyy.user.service.TokenFamilyService;
 import com.lyy.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +34,7 @@ public class UserController {
     private UserService userService;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private TokenFamilyService tokenFamilyService;
 
     @Autowired
     private ExpService expService;
@@ -52,23 +52,47 @@ public class UserController {
 
     @PostMapping("/login")
     @Operation(summary = "用户登录")
-    public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
+    public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO,
+                                      HttpServletResponse response) {
         log.info("用户登录：{}", userLoginDTO.getUsername());
         User user = userService.login(userLoginDTO.getUsername(), userLoginDTO.getPassword());
 
-        Map<String, Object> claims = new HashMap<>();
-        claims.put(JwtClaimsConstant.USER_ID, user.getId());
+        String accessToken = tokenFamilyService.issueAccessToken(user.getId());
+        String refreshToken = tokenFamilyService.issueRefreshToken(user.getId());
+        tokenFamilyService.setRefreshTokenCookie(response, refreshToken);
 
-        String token = jwtUtil.generateUserToken(claims);
-
-        UserLoginVO userLoginVO = UserLoginVO.builder()
+        UserLoginVO vo = UserLoginVO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
-                .accessToken(token)
+                .accessToken(accessToken)
                 .build();
 
-        return Result.success(userLoginVO);
+        return Result.success(vo);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "无感刷新 Access Token")
+    public Result<Map<String, String>> refresh(
+            @CookieValue(value = "refresh_token", required = false) String rawRefreshToken,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            return Result.tokenExpired("未携带 Refresh Token");
+        }
+
+        return tokenFamilyService.refresh(rawRefreshToken, request, response);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "退出登录")
+    public Result<String> logout(HttpServletResponse response) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户 {} 退出登录", userId);
+        tokenFamilyService.revokeAllFamily(userId);
+        tokenFamilyService.clearRefreshTokenCookie(response);
+        return Result.success("已退出登录");
     }
 
     @Operation(summary = "获取个人主页/UP主信息")
