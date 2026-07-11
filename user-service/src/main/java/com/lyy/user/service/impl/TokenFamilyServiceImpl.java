@@ -139,7 +139,7 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(false)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .path("/api/user/refresh")
                 .maxAge(Duration.ofDays(7))
                 .build();
@@ -151,7 +151,7 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(false)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .path("/api/user/refresh")
                 .maxAge(0)
                 .build();
