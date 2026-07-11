@@ -33,6 +33,11 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate stringRedisTemplate;
 
+    /** 每个用户最多同时活跃的 Token Family 数 */
+    private static final int MAX_ACTIVE_FAMILIES = 5;
+    /** 撤销后的 Key 保留时间（用于复用检测窗口） */
+    private static final Duration REVOKED_TTL = Duration.ofMinutes(5);
+
     @Override
     public String issueAccessToken(Long userId) {
         return jwtUtil.generateAccessToken(userId);
@@ -40,6 +45,9 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
 
     @Override
     public String issueRefreshToken(Long userId) {
+        // 先清理该用户旧的活跃族系，防止恶意登出登入刷 Key
+        cleanupOldFamilies(userId);
+
         String familyId = UUID.randomUUID().toString();
         String refreshToken = jwtUtil.generateRefreshToken(userId, familyId);
 
@@ -55,6 +63,38 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
 
         log.info("创建 Token Family: familyId={}, userId={}", familyId, userId);
         return refreshToken;
+    }
+
+    /** 清理用户旧的活跃族系，超过上限时撤销最老的 */
+    private void cleanupOldFamilies(Long userId) {
+        var keys = stringRedisTemplate.keys(RedisKey.REFRESH_TOKEN_FAMILY_PREFIX + "*");
+        if (keys == null || keys.isEmpty()) return;
+
+        int activeCount = 0;
+        for (String key : keys) {
+            String json = stringRedisTemplate.opsForValue().get(key);
+            if (json != null) {
+                TokenFamily family = JSON.parseObject(json, TokenFamily.class);
+                if (userId.equals(family.getUserId()) && TokenFamily.ACTIVE.equals(family.getStatus())) {
+                    activeCount++;
+                }
+            }
+        }
+
+        if (activeCount >= MAX_ACTIVE_FAMILIES) {
+            log.warn("用户 {} 活跃族系数已达上限 {}，撤销旧族系", userId, activeCount);
+            for (String key : keys) {
+                String json = stringRedisTemplate.opsForValue().get(key);
+                if (json != null) {
+                    TokenFamily family = JSON.parseObject(json, TokenFamily.class);
+                    if (userId.equals(family.getUserId()) && TokenFamily.ACTIVE.equals(family.getStatus())) {
+                        family.setStatus(TokenFamily.REVOKED);
+                        stringRedisTemplate.opsForValue().set(key, JSON.toJSONString(family), REVOKED_TTL);
+                        break; // 只撤销一个最老的（keys 按扫描顺序）
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -93,7 +133,7 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
         if (family.getUsedTokens().contains(tokenHash)) {
             log.error("检测到 Refresh Token 复用攻击！familyId={}, userId={}", familyId, userId);
             family.setStatus(TokenFamily.REVOKED);
-            stringRedisTemplate.opsForValue().set(key, JSON.toJSONString(family), Duration.ofDays(7));
+            stringRedisTemplate.opsForValue().set(key, JSON.toJSONString(family), REVOKED_TTL);
             return Result.tokenExpired("检测到异常登录活动，请重新登录");
         }
 
@@ -126,7 +166,7 @@ public class TokenFamilyServiceImpl implements TokenFamilyService {
                     TokenFamily family = JSON.parseObject(json, TokenFamily.class);
                     if (userId.equals(family.getUserId()) && TokenFamily.ACTIVE.equals(family.getStatus())) {
                         family.setStatus(TokenFamily.REVOKED);
-                        stringRedisTemplate.opsForValue().set(key, JSON.toJSONString(family), Duration.ofDays(7));
+                        stringRedisTemplate.opsForValue().set(key, JSON.toJSONString(family), REVOKED_TTL);
                         log.info("撤销 Token Family: key={}, userId={}", key, userId);
                     }
                 }
