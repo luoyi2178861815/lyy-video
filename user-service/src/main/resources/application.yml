@@ -36,7 +36,10 @@ lyy:
     admin-secret-key: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6"  # 至少32字符（256位）
     admin-ttl: 7200          # 单位：秒（2小时）
     admin-token-name: "Admin-Token"
-    # 用户端配置
+    # 用户端 Access Token（短效 15 分钟）
     user-secret-key: "z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0f9e8d7c6b5"
-    user-ttl: 604800         # 7天
+    user-access-ttl: 900
     user-token-name: "User-Token"
+    # 用户端 Refresh Token（长效 7 天）
+    user-refresh-secret-key: "r7e6f5r4e3s2h1t0o9k8e7n6m5i4l3a2b1c0d9e8f7g6h5i4j3"
+    user-refresh-ttl: 604800
