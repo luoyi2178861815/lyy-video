@@ -65,7 +65,7 @@ public class UserController {
                 .id(user.getId())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
-                .token(token)
+                .accessToken(token)
                 .build();
 
         return Result.success(userLoginVO);
