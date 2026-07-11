@@ -39,6 +39,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITE_LIST = List.of(
             "/api/user/login",
             "/api/user/register",
+            "/api/user/refresh",
             "/api/video/page",
             "/api/video/search",
             "/api/video/partitions"
