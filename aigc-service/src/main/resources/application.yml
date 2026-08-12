@@ -40,7 +40,7 @@ spring:
     chat:
       max-messages: 100
     dashscope:
-      api-key: sk-4434df1003964db3abe02aad0cf17050
+      api-key: ${DASHSCOPE_API_KEY}
       chat:
         options:
           model: qwen-max
