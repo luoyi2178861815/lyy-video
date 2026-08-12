@@ -24,3 +24,9 @@ Thumbs.db
 
 # ==================== Nacos ====================
 nacos/
+
+# ==================== 敏感配置 ====================
+.env
+*.env
+application-local.yml
+**/application-local.yml

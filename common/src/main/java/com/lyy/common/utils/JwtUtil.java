@@ -13,8 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import com.lyy.common.constant.JwtClaimsConstant;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -44,7 +46,22 @@ public class JwtUtil {
      * @return JWT 字符串
      */
     public String generateUserToken(Map<String, Object> claims) {
-        return generateToken(claims, jwtProperties.getUserSecretKey(), jwtProperties.getUserTtl());
+        return generateToken(claims, jwtProperties.getUserSecretKey(), jwtProperties.getUserAccessTtl());
+    }
+
+    public String generateAccessToken(Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(JwtClaimsConstant.USER_ID, userId);
+        claims.put(JwtClaimsConstant.TOKEN_TYPE, "ACCESS");
+        return generateToken(claims, jwtProperties.getUserSecretKey(), jwtProperties.getUserAccessTtl());
+    }
+
+    public String generateRefreshToken(Long userId, String familyId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(JwtClaimsConstant.USER_ID, userId);
+        claims.put(JwtClaimsConstant.FAMILY_ID, familyId);
+        claims.put(JwtClaimsConstant.TOKEN_TYPE, "REFRESH");
+        return generateToken(claims, jwtProperties.getUserRefreshSecretKey(), jwtProperties.getUserRefreshTtl());
     }
 
     /**
@@ -63,6 +80,10 @@ public class JwtUtil {
      */
     public Claims parseUserToken(String token) {
         return parseToken(token, jwtProperties.getUserSecretKey());
+    }
+
+    public Claims parseRefreshToken(String token) {
+        return parseToken(token, jwtProperties.getUserRefreshSecretKey());
     }
 
     /**

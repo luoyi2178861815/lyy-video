@@ -11,6 +11,8 @@ import java.io.Serializable;
 @Data
 public class Result<T> implements Serializable {
 
+    public static final int TOKEN_EXPIRED_CODE = 401001;
+
     private Integer code; //编码：1成功，0和其它数字为失败
     private String msg; //错误信息
     private T data; //数据
@@ -32,6 +34,20 @@ public class Result<T> implements Serializable {
         Result<T> result = new Result<>();
         result.msg = msg;
         result.code = 0;
+        return result;
+    }
+
+    public static <T> Result<T> error(int code, String msg) {
+        Result<T> result = new Result<>();
+        result.code = code;
+        result.msg = msg;
+        return result;
+    }
+
+    public static <T> Result<T> tokenExpired(String msg) {
+        Result<T> result = new Result<>();
+        result.code = TOKEN_EXPIRED_CODE;
+        result.msg = msg;
         return result;
     }
 

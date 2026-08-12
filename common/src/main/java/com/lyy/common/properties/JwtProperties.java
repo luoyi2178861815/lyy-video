@@ -20,7 +20,10 @@ public class JwtProperties {
      * 用户端微信用户生成jwt令牌相关配置
      */
     private String userSecretKey;
-    private long userTtl;
+    private long userAccessTtl;          // 新增：AT 有效期（秒）
     private String userTokenName;
+
+    private String userRefreshSecretKey; // 新增：RT 签名密钥
+    private long userRefreshTtl;         // 新增：RT 有效期（秒）
 
 }

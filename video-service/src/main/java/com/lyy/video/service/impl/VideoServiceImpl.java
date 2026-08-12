@@ -241,10 +241,11 @@ public class VideoServiceImpl implements VideoService {
         VideoInfoVO videoInfoVO = new VideoInfoVO();
         videoInfoVO.setVideoId(video.getId());
         BeanUtils.copyProperties(video, videoInfoVO);
+
         //并行化获取视频信息
 
         CompletableFuture<String> authorNameFuture = CompletableFuture.supplyAsync(() ->
-                userFeignClient.getUserByUsername(video.getUserId()).getData()
+                userFeignClient.getUserByUsername(video.getUserId()).getData(),
         );
 
         CompletableFuture<Integer> watchDurationFuture = CompletableFuture.supplyAsync(() -> {

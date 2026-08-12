@@ -45,6 +45,13 @@ mybatis:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+thread-pool:
+  mq:
+    core-pool-size: 10
+    max-pool-size: 20
+    queue-capacity: 100
+    keep-alive-seconds: 60
+
 feign:
   sentinel:
     enabled: true
