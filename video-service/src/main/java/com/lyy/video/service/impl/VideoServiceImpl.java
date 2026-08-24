@@ -245,7 +245,7 @@ public class VideoServiceImpl implements VideoService {
         //并行化获取视频信息
 
         CompletableFuture<String> authorNameFuture = CompletableFuture.supplyAsync(() ->
-                userFeignClient.getUserByUsername(video.getUserId()).getData(),
+                userFeignClient.getUserByUsername(video.getUserId()).getData()
         );
 
         CompletableFuture<Integer> watchDurationFuture = CompletableFuture.supplyAsync(() -> {

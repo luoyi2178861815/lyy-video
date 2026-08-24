@@ -3,6 +3,7 @@ package com.lyy.interaction;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @SpringBootApplication(scanBasePackages = {"com.lyy.interaction","com.lyy.common"})
 @EnableFeignClients   // 启用 OpenFeign 远程调用
 @EnableTransactionManagement
+@EnableConfigurationProperties
 @EnableAsync
 public class InteractionApplication {
 

@@ -17,6 +17,11 @@
     <description>用户服务：注册、登录、个人信息管理</description>
 
     <dependencies>
+        <!-- Redisson -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
         <!-- common 公共模块 -->
         <dependency>
             <groupId>com.lyy</groupId>

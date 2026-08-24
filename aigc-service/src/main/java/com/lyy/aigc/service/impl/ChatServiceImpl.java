@@ -11,10 +11,10 @@ import com.lyy.aigc.service.ChatSessionService;
 import com.lyy.common.context.BaseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -44,20 +47,17 @@ public class ChatServiceImpl implements ChatService {
     //通过一个容器，保存sessionId以及是否继续生成的标识
 //    private static final Map<String, Boolean> sessionIdMap = new ConcurrentHashMap<>();
     private static final String STATUS_KEY = "chat:status:";
+    // RAG 检索参数
+    private static final double SIMILARITY_THRESHOLD = 0.6d;
+    private static final int TOP_K = 5;
 
 
     @Override
     public Flux<ChatEventVO> chat(ChatDTO chatDTO) {
         var conversationId = ChatService.getConversationId(chatDTO.getSessionId());
 
-        //RAG顾问
-        var qaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
-                .searchRequest(SearchRequest.builder()
-                        .similarityThreshold(0.6d) // 设置相似度阈值
-                        .topK(5) // 搜索结果数量
-                        .build()
-                )
-                .build();
+        // 手动 RAG 检索 + 观测日志
+        String context = retrieveWithObservability(chatDTO.getQuestion());
 
         chatSessionService.update(chatDTO.getSessionId(), chatDTO.getQuestion(), BaseContext.getCurrentId());
         // 用于保存停止输出的记录
@@ -67,12 +67,11 @@ public class ChatServiceImpl implements ChatService {
         //生成请求id
         var requestId = IdUtil.fastSimpleUUID();
         return this.chatClient.prompt()
-                .system(promptSystem ->promptSystem
-                        .text(systemPromptConfig.getChatSystemMessage().get())
+                .system(promptSystem -> promptSystem
+                        .text(buildSystemMessage(context))
                         )
                 .advisors(advisor -> advisor
-                        .advisors(qaAdvisor)
-                        .param(ChatMemory.CONVERSATION_ID,conversationId ))//设置对话记忆中的对话id
+                        .param(ChatMemory.CONVERSATION_ID, conversationId))//设置对话记忆中的对话id
                 .user(chatDTO.getQuestion())
                 .toolContext(Map.of(Constant.REQUEST_ID, requestId))//将请求id存入工具容器
                 .stream()
@@ -125,5 +124,53 @@ public class ChatServiceImpl implements ChatService {
      */
     private void saveStopHistoryRecord(String conversationId, String content) {
         this.chatMemory.add(conversationId, new AssistantMessage(content));
+    }
+
+    /**
+     * 手动执行 RAG 检索并记录观测日志（耗时、召回数、相似度分布）
+     *
+     * @param question 用户问题
+     * @return 拼接后的检索上下文，无结果时返回空字符串
+     */
+    private String retrieveWithObservability(String question) {
+        long start = System.currentTimeMillis();
+        List<Document> documents = vectorStore.similaritySearch(
+                SearchRequest.builder()
+                        .query(question)
+                        .similarityThreshold(SIMILARITY_THRESHOLD)
+                        .topK(TOP_K)
+                        .build());
+        long cost = System.currentTimeMillis() - start;
+
+        if (documents.isEmpty()) {
+            log.info("[RAG观测] query={}, 检索耗时={}ms, 召回=0条", question, cost);
+            return "";
+        }
+
+        List<Double> scores = documents.stream()
+                .map(Document::getScore)
+                .filter(Objects::nonNull)
+                .toList();
+
+        log.info("[RAG观测] query={}, 检索耗时={}ms, 召回={}条, 相似度={}",
+                question, cost, documents.size(), scores);
+
+        StringBuilder context = new StringBuilder();
+        for (int i = 0; i < documents.size(); i++) {
+            context.append("[").append(i + 1).append("] ")
+                    .append(documents.get(i).getText()).append("\n");
+        }
+        return context.toString();
+    }
+
+    /**
+     * 组装 System Prompt：基础系统提示词 + 检索上下文
+     */
+    private String buildSystemMessage(String context) {
+        String basePrompt = systemPromptConfig.getChatSystemMessage().get();
+        if (context == null || context.isBlank()) {
+            return basePrompt;
+        }
+        return basePrompt + "\n\n参考知识库内容（仅基于以下内容回答，不要编造）：\n" + context;
     }
 }

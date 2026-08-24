@@ -9,7 +9,8 @@ import com.lyy.user.entity.po.ExpRecord;
 import com.lyy.user.entity.po.User;
 import com.lyy.user.entity.vo.UserLoginVO;
 import com.lyy.user.entity.vo.UserProfileVO;
-import com.lyy.user.service.ExpService;
+import com.lyy.user.ratelimit.RateLimit;
+import com.lyy.user.ratelimit.RateLimitType;
 import com.lyy.user.service.TokenFamilyService;
 import com.lyy.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,9 +37,6 @@ public class UserController {
     @Autowired
     private TokenFamilyService tokenFamilyService;
 
-    @Autowired
-    private ExpService expService;
-
     @Operation(summary = "用户注册")
     @PostMapping("/register")
     public Result<String> register(@RequestBody User user) {
@@ -49,7 +47,7 @@ public class UserController {
             return Result.error("注册失败");
         }
     }
-
+    @RateLimit(key = "user:login", rate = 1, rateInterval = 1, limitType = RateLimitType.IP )
     @PostMapping("/login")
     @Operation(summary = "用户登录")
     public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO,

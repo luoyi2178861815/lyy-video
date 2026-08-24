@@ -27,12 +27,16 @@ public class MessageUtil {
             myMessage.setToolCalls(assistantMessage.getToolCalls());
             //获取到工具调用的结果，设置到消息对象中
             var messageId = message.getMetadata().get("id");
-            var requestId = ToolResultHolder.get(messageId.toString(), Constant.REQUEST_ID);
-            Map<String, Object> paramsMap = ToolResultHolder.get(requestId.toString());
-            if (paramsMap != null) {
-                myMessage.setParams(paramsMap);
+            if (messageId != null) {
+                var requestId = ToolResultHolder.get(messageId.toString(), Constant.REQUEST_ID);
+                if (requestId != null) {
+                    Map<String, Object> paramsMap = ToolResultHolder.get(requestId.toString());
+                    if (paramsMap != null) {
+                        myMessage.setParams(paramsMap);
+                    }
+                    ToolResultHolder.remove(requestId.toString());
+                }
             }
-            ToolResultHolder.remove(requestId.toString());
         }
 
         if (message instanceof ToolResponseMessage toolResponseMessage) {
