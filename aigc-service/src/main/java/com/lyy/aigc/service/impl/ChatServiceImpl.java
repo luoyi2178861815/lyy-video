@@ -1,6 +1,7 @@
 package com.lyy.aigc.service.impl;
 
 import cn.hutool.core.util.IdUtil;
+import com.lyy.aigc.config.QueryTransformerConfig;
 import com.lyy.aigc.config.SystemPromptConfig;
 import com.lyy.aigc.config.ToolResultHolder;
 import com.lyy.aigc.constants.Constant;
@@ -9,12 +10,13 @@ import com.lyy.aigc.entity.vo.ChatEventVO;
 import com.lyy.aigc.service.ChatService;
 import com.lyy.aigc.service.ChatSessionService;
 import com.lyy.common.context.BaseContext;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.rag.Query;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +28,13 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 @Slf4j
 public class ChatServiceImpl implements ChatService {
 
+    @Resource
+    private QueryTransformerConfig queryTransformerConfig;
     @Autowired
     private VectorStore vectorStore;
     @Autowired
@@ -55,9 +58,10 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Flux<ChatEventVO> chat(ChatDTO chatDTO) {
         var conversationId = ChatService.getConversationId(chatDTO.getSessionId());
-
+        Query originalQuery = new Query(chatDTO.getQuestion());
+        Query transformedQuery = queryTransformerConfig.transform(originalQuery);
         // 手动 RAG 检索 + 观测日志
-        String context = retrieveWithObservability(chatDTO.getQuestion());
+        String context = retrieveWithObservability(transformedQuery.text());
 
         chatSessionService.update(chatDTO.getSessionId(), chatDTO.getQuestion(), BaseContext.getCurrentId());
         // 用于保存停止输出的记录
