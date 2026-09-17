@@ -30,4 +30,31 @@
         WHERE user_id = #{userId} AND video_id = #{videoId}
     </select>
 
+    <select id="listWatchHistory" resultType="com.lyy.video.entity.vo.WatchHistoryVO">
+        SELECT r.video_id AS videoId,
+               v.cover_url AS coverUrl,
+               v.title AS title,
+               v.duration AS duration,
+               r.last_watch_time AS lastWatchTime,
+               r.is_finished AS isFinished,
+               r.last_update_time AS lastUpdateTime
+        FROM user_video_record r
+        JOIN video v ON v.id = r.video_id
+        WHERE r.user_id = #{userId} AND v.status = 1
+        ORDER BY r.last_update_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countWatchHistory" resultType="long">
+        SELECT COUNT(*)
+        FROM user_video_record r
+        JOIN video v ON v.id = r.video_id
+        WHERE r.user_id = #{userId} AND v.status = 1
+    </select>
+
+    <delete id="deleteWatchHistory">
+        DELETE FROM user_video_record
+        WHERE user_id = #{userId} AND video_id = #{videoId}
+    </delete>
+
 </mapper>

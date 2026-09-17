@@ -8,7 +8,9 @@ public enum VideoStatusEnum {
     PUBLISHED(1, "已发布"),
     REMOVED(2, "已下架"),
     REVIEWING(3, "审核中"),
-    PRIVATE(4, "私密");
+    PRIVATE(4, "私密"),
+    /** 审核不通过：仅作者本人与后台管理员可见 */
+    REVIEW_REJECTED(5, "审核不通过");
 
     private final int code;
     private final String desc;

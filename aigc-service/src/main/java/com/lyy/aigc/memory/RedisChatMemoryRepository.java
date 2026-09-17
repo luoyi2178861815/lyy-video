@@ -1,8 +1,6 @@
 package com.lyy.aigc.memory;
 
-import cn.hutool.core.collection.CollStreamUtil;
 import cn.hutool.core.stream.StreamUtil;
-import com.lyy.common.utils.JsonUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -36,9 +34,6 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository {
     @Override
     public List<String> findConversationIds() {
         Set<String> keys = stringRedisTemplate.keys(PREFIX + "*");
-        if (keys == null){
-            return List.of();
-        }
         return StreamUtil.of(keys).map(key -> key.replace(PREFIX, "")).toList();
     }
 

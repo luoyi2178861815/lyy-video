@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.video.mapper.VideoReviewMapper">
+
+    <!-- 插入治理流水 -->
+    <insert id="insert" parameterType="com.lyy.video.entity.po.VideoReview"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO video_review (video_id, admin_id, admin_name, action, reason, create_time)
+        VALUES (#{videoId}, #{adminId}, #{adminName}, #{action}, #{reason}, #{createTime})
+    </insert>
+
+    <!-- 某视频的全部治理流水，倒序 -->
+    <select id="selectByVideoId" resultType="com.lyy.video.entity.po.VideoReview">
+        SELECT * FROM video_review
+        WHERE video_id = #{videoId}
+        ORDER BY id DESC
+    </select>
+
+    <!--
+      某用户被驳回的视频 + 最新一次驳回原因。
+      video 与 video_review 同在 db_video，可直接 JOIN，因此不在 video 表冗余 reject_reason 字段。
+      子查询取该视频 action=2 的最大 id，保证只带出最近一次驳回记录。
+    -->
+    <select id="selectMyRejected" resultType="com.lyy.video.entity.vo.MyRejectedVideoVO">
+        SELECT v.id            AS videoId,
+               v.title         AS title,
+               v.cover_url     AS coverUrl,
+               v.duration      AS duration,
+               v.create_time   AS createTime,
+               r.reason        AS rejectReason,
+               r.admin_name    AS reviewerName,
+               r.create_time   AS reviewTime
+        FROM video v
+        LEFT JOIN video_review r
+               ON r.video_id = v.id
+              AND r.id = (SELECT MAX(r2.id) FROM video_review r2
+                          WHERE r2.video_id = v.id AND r2.action = 2)
+        WHERE v.user_id = #{userId}
+          AND v.status = 5
+        ORDER BY v.create_time DESC
+    </select>
+
+</mapper>

@@ -42,7 +42,11 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/user/refresh",
             "/api/video/page",
             "/api/video/search",
-            "/api/video/partitions"
+            "/api/video/partitions",
+            // 管理端路径不归 C 端过滤器管，改由路由级 AdminAuth 负责校验 Admin-Token。
+            // 必须加在这里：本过滤器是 GlobalFilter（order=0），先于所有路由级过滤器执行，
+            // 不加则 /api/admin/** 会先在这里被判为「未携带 User-Token」而拒绝。
+            "/api/admin/"
     );
 
     /**

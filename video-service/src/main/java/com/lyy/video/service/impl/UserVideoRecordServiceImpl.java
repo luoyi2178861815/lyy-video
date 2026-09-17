@@ -5,8 +5,10 @@ import com.lyy.common.context.BaseContext;
 import com.lyy.common.dto.ExpMessage;
 import com.lyy.common.exception.BusinessException;
 import com.lyy.common.exception.VideoNotFoundException;
+import com.lyy.common.result.PageResult;
 import com.lyy.video.entity.po.UserVideoRecord;
 import com.lyy.video.entity.po.Video;
+import com.lyy.video.entity.vo.WatchHistoryVO;
 import com.lyy.video.mapper.UserVideoRecordMapper;
 import com.lyy.video.mapper.VideoMapper;
 import com.lyy.video.service.UserVideoRecordService;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -92,7 +95,7 @@ public class UserVideoRecordServiceImpl implements UserVideoRecordService {
 
     @Override
     @Transactional
-    public void submitProgress(Long videoId) {
+    public void submitProgress(Long videoId, Integer time) {
         Long userId = BaseContext.getCurrentId();
         if (userId == null) {
             throw new BusinessException("用户未登录");
@@ -127,7 +130,12 @@ public class UserVideoRecordServiceImpl implements UserVideoRecordService {
         if (cachedTime == null) {
             log.error("使用db兜底数据");
         }
-        int newWatchTime = oldWatchTime + 5;
+        // 优先采用前端上报的实际播放位置，缺失时才兜底 +5（保持旧行为）
+        int newWatchTime = (time != null && time >= 0) ? time : oldWatchTime + 5;
+        // 防止脏数据超过视频总时长，导致续播 seek 到末尾黑屏
+        if (record.getDuration() != null && record.getDuration() > 0 && newWatchTime > record.getDuration()) {
+            newWatchTime = record.getDuration();
+        }
         record.setLastWatchTime(newWatchTime);
         record.setWatchDuration(record.getWatchDuration() != null ? record.getWatchDuration() + 5 : 5);
         record.setLastUpdateTime(LocalDateTime.now());
@@ -138,5 +146,29 @@ public class UserVideoRecordServiceImpl implements UserVideoRecordService {
         }
         // 走 Redis 延迟持久化
         delayTaskHandler.addVideoRecordTask(record);
+    }
+
+    @Override
+    public PageResult listWatchHistory(int pageNum, int pageSize) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new BusinessException("用户未登录");
+        }
+        int offset = (pageNum - 1) * pageSize;
+        List<WatchHistoryVO> list = userVideoRecordMapper.listWatchHistory(userId, offset, pageSize);
+        long total = userVideoRecordMapper.countWatchHistory(userId);
+        return new PageResult(total, list);
+    }
+
+    @Override
+    public void deleteWatchHistory(Long videoId) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new BusinessException("用户未登录");
+        }
+        if (videoId == null) {
+            throw new BusinessException("视频ID不能为空");
+        }
+        userVideoRecordMapper.deleteWatchHistory(userId, videoId);
     }
 }

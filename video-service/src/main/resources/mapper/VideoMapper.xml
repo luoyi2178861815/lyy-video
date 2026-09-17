@@ -78,8 +78,9 @@
             SELECT * FROM video WHERE id = #{videoId}
     </select>
 
+    <!-- 只有已发布的视频才算「存在」，否则审核中/私密/被驳回的视频也能被点赞 -->
     <select id="exists" resultType="java.lang.Integer">
-        SELECT COUNT(*) FROM video WHERE id = #{videoId} AND status != 2
+        SELECT COUNT(*) FROM video WHERE id = #{videoId} AND status = 1
     </select>
 
     <!-- 视频搜索（标题 + 简介模糊匹配） -->
@@ -106,11 +107,7 @@
         <if test="partitionCode != null">
             AND partition_code = #{partitionCode}
         </if>
-        <choose>
-            <when test="sort == 'latest'">ORDER BY create_time DESC</when>
-            <when test="sort == 'play'">ORDER BY play_count DESC</when>
-            <otherwise>ORDER BY hot_score DESC</otherwise>
-        </choose>
+        ORDER BY create_time DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
@@ -122,22 +119,53 @@
         </if>
     </select>
 
+    <!-- 加 status = 1：否则被驳回/已下架的视频会照常出现在收藏夹和点赞列表，点进去才报错 -->
     <select id="selectByIds" resultType="com.lyy.video.entity.po.Video">
         SELECT * FROM video
-        WHERE id IN
+        WHERE status = 1
+          AND id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
     </select>
     <select id="getMyVideos" resultType="com.lyy.video.entity.po.Video">
     SELECT * FROM video
-    WHERE user_id IN
-    <foreach collection="userIds" item="userId" open="(" separator="," close=")">
-        #{userId}
-    </foreach>
+    WHERE user_id = #{userId}
     AND status = 1
     LIMIT #{offset}, #{pageSize}
 
 </select>
+
+    <!-- ==================== 管理端查询（新增，不改动上面 6 个 C 端查询） ==================== -->
+
+    <!-- 按状态分页查询视频，status 为 null 时查全部状态 -->
+    <select id="pageVideosForAdmin" resultType="com.lyy.video.entity.po.Video">
+        SELECT * FROM video
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 按状态统计视频总数 -->
+    <select id="countVideosForAdmin" resultType="long">
+        SELECT COUNT(*) FROM video
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 更新视频状态（通过/驳回/下架/重新上架共用） -->
+    <update id="updateStatus">
+        UPDATE video
+        SET status = #{status},
+            update_time = NOW()
+        WHERE id = #{videoId}
+    </update>
 
 </mapper>

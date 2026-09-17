@@ -49,7 +49,7 @@ public class VideoLikeServiceImpl implements VideoLikeService {
         // 2. 校验视频是否存在（复用你原有逻辑，优化Redis查询写法）
         String baseKey = RedisKey.VIDEO_INFO_BASE_PREFIX + videoId;
         Boolean hasVideo = redisTemplate.opsForHash().hasKey(baseKey, "video");
-        if (!Boolean.TRUE.equals(hasVideo)) {
+        if (!hasVideo) {
             Result<Integer> result = videoFeignClient.exists(videoId);
             if (result.getData() == 0) throw new VideoNotFoundException("视频不存在或已删除");
         }

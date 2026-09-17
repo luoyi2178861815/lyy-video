@@ -9,7 +9,6 @@ import com.lyy.user.entity.po.ExpRecord;
 import com.lyy.user.entity.po.User;
 import com.lyy.user.entity.vo.UserLoginVO;
 import com.lyy.user.entity.vo.UserProfileVO;
-import com.lyy.user.service.ExpService;
 import com.lyy.user.service.TokenFamilyService;
 import com.lyy.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,39 +35,44 @@ public class UserController {
     @Autowired
     private TokenFamilyService tokenFamilyService;
 
-    @Autowired
-    private ExpService expService;
-
-    @Operation(summary = "用户注册")
+    @Operation(summary = "用户注册（成功后直接进入登录态，无需再次登录）")
     @PostMapping("/register")
-    public Result<String> register(@RequestBody User user) {
-        boolean success = userService.register(user);
-        if (success) {
-            return Result.success("注册成功");
-        } else {
+    public Result<UserLoginVO> register(@RequestBody User user, HttpServletResponse response) {
+        if (!userService.register(user)) {
             return Result.error("注册失败");
         }
+        // 注册即签发登录凭证。刻意不走 userService.login()，避免触发每日登录经验
+        log.info("用户注册成功并自动登录：{}", user.getUsername());
+        return Result.success(issueLoginTokens(user, response));
     }
-
+//    @RateLimit(key = "user:login", rate = 1, rateInterval = 1, limitType = RateLimitType.IP )
     @PostMapping("/login")
     @Operation(summary = "用户登录")
     public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO,
                                       HttpServletResponse response) {
         log.info("用户登录：{}", userLoginDTO.getUsername());
         User user = userService.login(userLoginDTO.getUsername(), userLoginDTO.getPassword());
+        return Result.success(issueLoginTokens(user, response));
+    }
 
+    /**
+     * 签发登录凭证并组装返回体，登录与注册共用
+     *
+     * @param user     已确认存在的用户实体
+     * @param response 用于写入 refresh_token Cookie
+     * @return 包含 accessToken 的登录信息
+     */
+    private UserLoginVO issueLoginTokens(User user, HttpServletResponse response) {
         String accessToken = tokenFamilyService.issueAccessToken(user.getId());
         String refreshToken = tokenFamilyService.issueRefreshToken(user.getId());
         tokenFamilyService.setRefreshTokenCookie(response, refreshToken);
 
-        UserLoginVO vo = UserLoginVO.builder()
+        return UserLoginVO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
                 .accessToken(accessToken)
                 .build();
-
-        return Result.success(vo);
     }
 
     @PostMapping("/refresh")

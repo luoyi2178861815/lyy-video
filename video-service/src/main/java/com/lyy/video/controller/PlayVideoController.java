@@ -65,9 +65,10 @@ public class PlayVideoController {
      * 用户提交播放进度
      */
     @PostMapping("/progress/{videoId}")
-    public Result<String> submitProgress(@PathVariable Long videoId) {
-        log.info("用户上报播放心跳：videoId={}", videoId);
-        UserVideorecordService.submitProgress(videoId);
+    public Result<String> submitProgress(@PathVariable Long videoId,
+                                         @RequestParam(required = false) Integer time) {
+        log.info("用户上报播放心跳：videoId={}, time={}", videoId, time);
+        UserVideorecordService.submitProgress(videoId, time);
         return Result.success("上报成功");
     }
 
@@ -164,5 +165,26 @@ public class PlayVideoController {
         log.info("获取用户视频列表：pageNum={}, pageSize={}", pageNum, pageSize);
         List<MyVideoVO> result = videoService.getMyVideos(pageNum, pageSize);
         return Result.success(result);
+    }
+
+    /**
+     * 获取用户观看历史列表
+     */
+    @GetMapping("/history")
+    public Result<PageResult> listWatchHistory(@RequestParam(defaultValue = "1") int pageNum,
+                                               @RequestParam(defaultValue = "12") int pageSize) {
+        log.info("获取观看历史：pageNum={}, pageSize={}", pageNum, pageSize);
+        PageResult result = UserVideorecordService.listWatchHistory(pageNum, pageSize);
+        return Result.success(result);
+    }
+
+    /**
+     * 删除单条观看历史
+     */
+    @DeleteMapping("/history/{videoId}")
+    public Result<String> deleteWatchHistory(@PathVariable Long videoId) {
+        log.info("删除观看历史：videoId={}", videoId);
+        UserVideorecordService.deleteWatchHistory(videoId);
+        return Result.success("删除成功");
     }
 }

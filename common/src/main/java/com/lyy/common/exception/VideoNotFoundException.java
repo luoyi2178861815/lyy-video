@@ -12,7 +12,7 @@ public class VideoNotFoundException extends RuntimeException {
 
     public VideoNotFoundException(String message) {
         super(message);
-        this.code = 500;
+        this.code = 50000;
     }
 
     public VideoNotFoundException(Integer code, String message) {

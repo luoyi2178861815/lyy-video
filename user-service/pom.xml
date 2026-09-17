@@ -17,6 +17,11 @@
     <description>用户服务：注册、登录、个人信息管理</description>
 
     <dependencies>
+        <!-- Redisson -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
         <!-- common 公共模块 -->
         <dependency>
             <groupId>com.lyy</groupId>
@@ -81,6 +86,13 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+
+        <!-- BCrypt 密码加密（只取加密工具，不引入 Spring Security 全家桶，
+             避免默认安全过滤器链把现有接口全部拦掉） -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
         <!-- JJWT（user-service 需要解析 JWT） -->

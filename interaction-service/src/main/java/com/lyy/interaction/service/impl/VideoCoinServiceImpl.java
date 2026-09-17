@@ -6,7 +6,6 @@ import com.lyy.common.dto.CoinMessage;
 import com.lyy.common.dto.ExpMessage;
 import com.lyy.common.result.Result;
 import com.lyy.interaction.config.AsyncConfig;
-import com.lyy.interaction.entity.po.MqMessageLog;
 import com.lyy.interaction.entity.po.VideoCoin;
 import com.lyy.interaction.feign.UserFeignClient;
 import com.lyy.interaction.mapper.MqMessageLogMapper;
@@ -20,7 +19,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -97,7 +95,7 @@ public class VideoCoinServiceImpl implements VideoCoinService {
                 return Result.error("您已经对该视频投过币了");
             }
             //异步处理投币消息
-            asyncConfig.handleMqTaskExecutor().execute(() -> {
+            asyncConfig.   handleMqTaskExecutor().execute(() -> {
                 try {
                     CoinMessage msg = new CoinMessage();
                     msg.setUserId(userId);

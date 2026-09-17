@@ -1,5 +1,6 @@
 package com.lyy.video.service.impl;
 
+import com.lyy.common.constant.RedisKey;
 import com.lyy.common.context.BaseContext;
 import com.lyy.common.exception.BusinessException;
 import com.lyy.common.exception.VideoNotFoundException;
@@ -53,8 +54,10 @@ public class VideoServiceImpl implements VideoService {
 
     private RedisTemplate<Object, Object> redisTemplate;
 
-    private static final String VIDEO_INFO_BASE_PREFIX = "video:base:";
-    private static final String VIDEO_INFO_STAT_PREFIX = "video:stat:";
+    // key 前缀统一引用已有的 RedisKey，管理端治理动作要用同一个值删缓存，
+    // 两处各写一份字面量一旦不同步会导致缓存静默失效
+    private static final String VIDEO_INFO_BASE_PREFIX = RedisKey.VIDEO_INFO_BASE_PREFIX;
+    private static final String VIDEO_INFO_STAT_PREFIX = RedisKey.VIDEO_INFO_STAT_PREFIX;
 
     @Override
     public void uploadVideo(VideoUploadDTO dto) {
@@ -104,8 +107,13 @@ public class VideoServiceImpl implements VideoService {
             if (video == null) {
                 throw new VideoNotFoundException("视频不存在");
             }
-            redisTemplate.opsForHash().put(VIDEO_INFO_BASE_PREFIX + videoId, "video", video);
-            redisTemplate.expire(VIDEO_INFO_BASE_PREFIX + videoId, 7, TimeUnit.DAYS);
+            // 只有已发布的视频才写缓存：未过审/已下架/私密的视频一旦进缓存，
+            // interaction-service 的点赞校验（VideoLikeServiceImpl.likeVideo）会因
+            // 缓存命中而跳过 exists 检查，导致可以对用户看不见的视频点赞
+            if (video.getStatus() != null && video.getStatus() == 1) {
+                redisTemplate.opsForHash().put(VIDEO_INFO_BASE_PREFIX + videoId, "video", video);
+                redisTemplate.expire(VIDEO_INFO_BASE_PREFIX + videoId, 7, TimeUnit.DAYS);
+            }
         } else {
             video = (Video) videoBaseInfo.get("video");
         }
@@ -141,8 +149,13 @@ public class VideoServiceImpl implements VideoService {
             if (video.getStatus() != null && video.getStatus() == 2) {
                 throw new BusinessException("视频已下架");
             }
+            //4.审核不通过：仅作者本人可见
+            if (video.getStatus() != null && video.getStatus() == 5
+                    && !userId.equals(video.getUserId())) {
+                throw new BusinessException("视频不存在");
+            }
 
-        //4.正常视频获取信息
+        //5.正常视频获取信息
         return changeToVideoInfoVO(video, userId);
     }
     /*
@@ -245,7 +258,7 @@ public class VideoServiceImpl implements VideoService {
         //并行化获取视频信息
 
         CompletableFuture<String> authorNameFuture = CompletableFuture.supplyAsync(() ->
-                userFeignClient.getUserByUsername(video.getUserId()).getData(),
+                userFeignClient.getUserByUsername(video.getUserId()).getData()
         );
 
         CompletableFuture<Integer> watchDurationFuture = CompletableFuture.supplyAsync(() -> {

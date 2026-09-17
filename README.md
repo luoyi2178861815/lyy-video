@@ -64,14 +64,14 @@
 
 ## 模块说明
 
-| 模块 | 端口 | 职责 |
-|------|------|------|
-| **common** | — | 公共库：实体、DTO、统一返回、JWT 工具、异常处理、拦截器 |
-| **gateway-service** | 8000 | API 网关：路由转发、JWT 鉴权（白名单 + Token Family 防重放） |
-| **user-service** | 15000 | 用户服务：注册/登录、个人信息、双 Token 机制、经验值系统 |
-| **video-service** | 8002 | 视频服务：上传/播放/搜索、JavaCV 元数据提取、观看进度看门狗 |
+| 模块 | 端口  | 职责 |
+|------|-------|------|
+| **common** | —     | 公共库：实体、DTO、统一返回、JWT 工具、异常处理、拦截器 |
+| **gateway-service** | 8001  | API 网关：路由转发、JWT 鉴权（白名单 + Token Family 防重放） |
+| **user-service** | 15000 | 用户服务：注册/登录、个人信息、双 Token 机制、经验值系统、**后台管理员账号与登录** |
+| **video-service** | 8002  | 视频服务：上传/播放/搜索、JavaCV 元数据提取、观看进度看门狗、**视频审核治理** |
 | **interaction-service** | 12000 | 互动服务：点赞/投币/收藏/评论/关注、Sentinel 熔断降级 |
-| **aigc-service** | 1000 | AI 智能助手：RAG 检索增强 + Tool Calling + SSE 流式对话 + 持久化记忆 |
+| **aigc-service** | 1000  | AI 智能助手：RAG 检索增强 + Tool Calling + SSE 流式对话 + 持久化记忆 |
 | **recommend-service** | 14000 | 推荐服务：（开发中）热门排行、个性化推荐 |
 
 ## 核心功能亮点
@@ -103,6 +103,24 @@ Access Token（15min）+ Refresh Token（7d），基于 Token Family 轮转机�
 ### 多级缓存计数同步
 L1 Redis 统计计数（高频读写）→ L2 Redis 基础数据 → L3 MySQL 持久化。互动事件通过 RabbitMQ 异步同步到各服务，保证最终一致性。
 
+### 视频审核治理
+上传的视频先进审核（`status=3`），管理员在独立后台通过或驳回，通过后才发布；已发布的视频可下架、下架后可重新上架。被驳回的视频，作者在「我的 → 审核区」能看到驳回原因（见 `yi-frontend`）。
+
+视频状态机（`VideoStatusEnum`）：
+
+| code | 枚举 | 含义 | C 端可见性 |
+|------|------|------|-----------|
+| 1 | `PUBLISHED` | 已发布 | 所有人 |
+| 2 | `REMOVED` | 已下架 | 不可见 |
+| 3 | `REVIEWING` | 审核中 | 仅作者本人 |
+| 4 | `PRIVATE` | 私密 | 仅作者本人 |
+| 5 | `REVIEW_REJECTED` | 审核不通过 | 仅作者本人 |
+
+- **审核流水留痕**：`video_review` 表记录每一次治理动作（谁 / 何时 / 因何做了什么），驳回原因存在流水里而非冗余到视频表，任何一次判定都可追溯
+- **状态机驱动的判定面**：后台详情页的操作栏完全由视频状态推导（审核中→通过·驳回、已发布→下架、已下架→重新上架、审核不通过→只读），非法操作在界面上根本不存在，后端状态守卫只作兜底而非主防线
+- **管理端与 C 端完全隔离**：管理端用 `Admin-Token`（2h）、C 端用 `User-Token`（7d），两套密钥独立；网关 `AdminAuth` 过滤器校验后下发 `X-Admin-Id` / `X-Admin-Name`，下游用 `AdminContext` 承接，与 C 端的 `BaseContext` 是两个互不干扰的 ThreadLocal
+- **网关路由顺序敏感**：`/api/admin/video/**` → video-service、`/api/admin/**` → user-service，两条路由的 `AdminAuth` **必须排在 `StripPrefix` 之前**，否则过滤器拿到的是被剥掉前缀的路径
+
 ## 快速开始
 
 ### 前置环境
@@ -125,7 +143,14 @@ CREATE DATABASE IF NOT EXISTS db_aigc;
 CREATE DATABASE IF NOT EXISTS db_recommend;
 ```
 
-各服务启动时 MyBatis 会自动建表（DDL 由 mapper XML 定义）。
+各服务启动时 MyBatis 会自动建表（DDL 由 mapper XML 定义）。审核治理相关的两张表在 `resources/ddl/` 下，需先执行：
+
+```bash
+mysql -u root -p123456 < user-service/src/main/resources/ddl/admin.sql        # 后台管理员（db_user）
+mysql -u root -p123456 < video-service/src/main/resources/ddl/video_review.sql # 视频治理流水（db_video）
+```
+
+`admin.sql` 里刻意不写种子数据——BCrypt 密文必须在运行期由 `BCryptPasswordEncoder` 生成，手写密文一旦有误就是「密码正确却登不进去」的难查故障。默认超管由 user-service 首次启动时的 `AdminSeeder` 播种（表为空才写，幂等）。
 
 ### Nacos 配置
 
@@ -159,16 +184,35 @@ mvn spring-boot:run -pl recommend-service   # 推荐 :14000
 
 启动后访问：`http://localhost:{port}/doc.html`（Knife4j / Swagger UI）
 
+### 管理后台前端
+
+管理后台是独立前端工程 `admin-frontend`（Vue 3 + naive-ui + UnoCSS + Vite），与 `lyy-video/` 同级存放、不在本仓库内：
+
+```bash
+cd admin-frontend
+npm install
+npm run dev          # http://localhost:3001
+```
+
+默认账号 `admin / 123456`（由 user-service 首次启动时播种）。Vite 把 `/api` 代理到网关 `:8001`，所以**后端进程必须先起**，否则页面能打开但接口全红。
+
 ## 项目结构
 
 ```
 lyy-video/
 ├── common/                   # 公共模块（实体、DTO、工具类、拦截器）
-├── gateway-service/          # API 网关（路由 + JWT 过滤器）
-├── user-service/             # 用户服务（注册/登录/Token Family）
-├── video-service/            # 视频服务（上传/播放/JavaCV/看门狗）
+├── gateway-service/          # API 网关（路由 + JWT 过滤器 + AdminAuth）
+├── user-service/             # 用户服务（注册/登录/Token Family/管理员账号）
+├── video-service/            # 视频服务（上传/播放/JavaCV/看门狗/审核治理）
 ├── interaction-service/      # 互动服务（点赞/评论/收藏/关注/Sentinel）
 ├── aigc-service/             # AI 服务（RAG/Tool Calling/SSE/会话记忆）
 ├── recommend-service/        # 推荐服务（开发中）
 └── videos/                   # 上传文件存储目录
 ```
+
+本仓库只含后端微服务。本地工作区中与 `lyy-video/` 同级还有两个前端工程（不在本仓库内）：
+
+- `yi-frontend/` —— C 端，开发端口 `:3000`，含「我的 → 审核区」
+- `admin-frontend/` —— 管理后台，开发端口 `:3001`
+
+对应的一键启动脚本 `start-frontend.bat` / `start-admin-frontend.bat` 同样放在工作区根目录。

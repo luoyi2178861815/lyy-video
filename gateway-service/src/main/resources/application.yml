@@ -1,6 +1,6 @@
 # ==================== 网关服务（端口 8000） ====================
 server:
-  port: 8000
+  port: 8001
 
 spring:
   application:
@@ -20,6 +20,22 @@ spring:
             allowCredentials: true
       routes:
 
+        # ========== 管理端 - 视频服务（顺序敏感，必须排在下面的 /api/admin/** 通配之前） ==========
+        - id: admin-video-service
+          uri: lb://video-service
+          predicates:
+            - Path=/api/admin/video/**
+          filters:
+            - AdminAuth                     # 必须排在 StripPrefix 之前，见上文说明
+            - StripPrefix=1                 # /api/admin/video/page → /admin/video/page
+        # ========== 管理端 - 用户服务（含登录，通配接住 user-service 内所有后台模块） ==========
+        - id: admin-user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - AdminAuth                     # 必须排在 StripPrefix 之前，见上文说明
+            - StripPrefix=1                 # /api/admin/login → /admin/login
         # ========== 用户服务路由 ==========
         - id: user-service
           uri: lb://user-service

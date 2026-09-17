@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lyy.user.mapper.AdminMapper">
+
+    <sql id="Base_Column_List">
+        id, username, password, name, status, create_time, update_time
+    </sql>
+
+    <!-- 新增管理员 -->
+    <insert id="insert" parameterType="com.lyy.user.entity.po.Admin"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO admin (username, password, name, status, create_time, update_time)
+        VALUES (#{username}, #{password}, #{name}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <!-- 按账号查询（登录用） -->
+    <select id="selectByUsername" resultType="com.lyy.user.entity.po.Admin">
+        SELECT <include refid="Base_Column_List"/> FROM admin WHERE username = #{username}
+    </select>
+
+    <!-- 统计总数（播种判断） -->
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM admin
+    </select>
+
+</mapper>
