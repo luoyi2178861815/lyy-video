@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "用户关注", description = "关注/取关 / 关注列表 / 粉丝列表")
@@ -56,5 +57,15 @@ public class FollowController {
         Long currentUserId = BaseContext.getCurrentId();
         boolean following = followService.isFollowing(currentUserId, userId);
         return Result.success(Map.of("following", following));
+    }
+
+    @Operation(summary = "查询我关注的全部用户ID（供动态流内部调用，刻意不分页）")
+    @GetMapping("/following/ids")
+    public Result<List<Long>> getFollowingIds(@RequestParam Long userId) {
+        // 参数用 @RequestParam 显式传，不依赖 BaseContext：
+        // Feign 内部调用不经网关，网关注入的 X-User-Id 不会被转发，BaseContext 在这里是空的。
+        // 这与现有 InteractionFeignClient.isLike(videoId, userId) 的写法一致。
+        log.info("查询用户 {} 的关注ID列表", userId);
+        return Result.success(followService.getFollowingIds(userId));
     }
 }

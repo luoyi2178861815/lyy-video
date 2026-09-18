@@ -122,6 +122,15 @@ public class FollowServiceImpl implements FollowService {
         return followMapper.exists(userId, followeeId) > 0;
     }
 
+    @Override
+    public List<Long> getFollowingIds(Long userId) {
+        // userId 为空说明调用方没传参，返回空集合让上游自己判断，不抛异常打断
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        return followMapper.selectFollowingIds(userId);
+    }
+
     private void sendFollowMessage(Long followerId, Long followeeId, int increment) {
         FollowMessage msg = new FollowMessage();
         msg.setFollowerId(followerId);

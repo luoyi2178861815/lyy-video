@@ -33,4 +33,10 @@ public interface UserFollowMapper {
 
     /** 粉丝总数 */
     int selectFansCount(@Param("userId") Long userId);
+
+    /**
+     * 查询我关注的全部用户 ID（动态流专用）
+     * 刻意不分页：结果只用来拼 SQL 的 IN 子句，分页没有意义
+     */
+    List<Long> selectFollowingIds(@Param("userId") Long userId);
 }

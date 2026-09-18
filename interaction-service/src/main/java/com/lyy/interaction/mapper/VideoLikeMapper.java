@@ -25,4 +25,11 @@ public interface VideoLikeMapper {
 
     /** 用户点赞总数 */
     int selectUserLikeCount(@Param("userId") Long userId);
+
+    /**
+     * 批量查询：在这批视频里，我赞过哪些（返回 video_id 列表）
+     * 走 DB 而不是 Redis：现有单条版 isLike 查的就是 DB，批量版走 Redis 会与单条版状态不一致
+     */
+    List<Long> selectLikedVideoIds(@Param("userId") Long userId,
+                                   @Param("videoIds") List<Long> videoIds);
 }

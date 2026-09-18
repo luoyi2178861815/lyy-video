@@ -2,6 +2,8 @@ package com.lyy.interaction.service;
 
 import com.lyy.common.result.PageResult;
 
+import java.util.List;
+
 public interface VideoLikeService {
 
     /** 点赞/取消点赞，返回 true=已点赞 false=已取消 */
@@ -11,4 +13,7 @@ public interface VideoLikeService {
     PageResult getUserLikePage(Long userId, int pageNum, int pageSize);
 
     Boolean isLike(Long userId, Long videoId);
+
+    /** 批量查询我在这批视频里赞过的 ID（动态流用） */
+    List<Long> getLikedVideoIds(Long userId, List<Long> videoIds);
 }

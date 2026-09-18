@@ -149,6 +149,15 @@ public class VideoLikeServiceImpl implements VideoLikeService {
         return exists == 1;
     }
 
+    @Override
+    public List<Long> getLikedVideoIds(Long userId, List<Long> videoIds) {
+        // 空集合必须在这里挡住：IN () 是 SQL 语法错误，本页无记录时就会走到这条
+        if (userId == null || videoIds == null || videoIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return videoLikeMapper.selectLikedVideoIds(userId, videoIds);
+    }
+
     /** Feign 批量查视频信息，失败时降级返回空 Map */
     private Map<Long, Map<String, Object>> fetchVideoMap(List<Long> videoIds) {
         try {

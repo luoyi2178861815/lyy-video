@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "视频点赞", description = "视频点赞/取消点赞/点赞列表")
@@ -45,5 +46,13 @@ public class VideoLikeController {
                                   @RequestParam Long userId) {
         log.info("远程调用openfeign查询用户是否点赞....");
         return Result.success(videoLikeService.isLike(userId, videoId));
+    }
+
+    @Operation(summary = "批量查询我赞过的视频ID（供动态流内部调用）")
+    @GetMapping("/batchStatus")
+    public Result<List<Long>> batchStatus(@RequestParam Long userId,
+                                          @RequestParam List<Long> videoIds) {
+        log.info("批量查询用户 {} 的点赞状态，视频数 {}", userId, videoIds.size());
+        return Result.success(videoLikeService.getLikedVideoIds(userId, videoIds));
     }
 }
