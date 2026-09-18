@@ -2,6 +2,10 @@
 server:
   port: 1000
 spring:
+  # 激活 local profile：Spring Boot 会自动加载同目录下的 application-local.yml，
+  # 且 profile 专属配置的优先级高于本文件，用于存放不能提交进仓库的本地密钥。
+  profiles:
+    active: local
     # Elasticsearch 配置
   elasticsearch:
     uris: http://127.0.0.1:19200
@@ -40,7 +44,11 @@ spring:
     chat:
       max-messages: 100
     dashscope:
-      api-key: sk-ws-H.EELHHRX.sF7R.MEQCIGDiHBdpUWGS9r0FK8hC91VMQD_jrfzYPf6mLuJ-TlEDAiBepRND_cAnfwUs3jXjP_i4uzO6lmei_Ibpw31d2RDAfw
+      # ⚠️ API Key 不写在本文件里，也不提交进仓库（本文件受 git 追踪）。
+      # 真实值放在同目录的 application-local.yml：它被 .gitignore 忽略，
+      # 并由上面的 local profile 覆盖到此字段；换机器/新克隆时需自行创建该文件。
+      # 若想改用环境变量，把下一行替换为：api-key: ${DASHSCOPE_API_KEY:}
+      # api-key: <本地值见 application-local.yml>
       chat:
         options:
           model: qwen-max
