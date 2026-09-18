@@ -168,4 +168,33 @@
         WHERE id = #{videoId}
     </update>
 
+    <!-- ==================== 动态流（新增，不改动上面任何查询） ==================== -->
+
+    <!-- authorIds 由 FeedService 保证非空（至少含「我自己」），所以这里不用判空：
+         真为空时 <foreach> 会展开成 IN ()，MySQL 直接报语法错误，
+         所以调用方必须挡住空集合（FeedServiceImpl 里已挡）
+         强制 status = 1，不接受前端传状态：未发布/已下架的内容不能进动态流
+         注意 create_time 是秒级 DATETIME，同一秒的多条必须再按 id 排序：
+         否则并列行次序不定，LIMIT 翻页时会出现「同一张卡片跨页重复 / 某条永远翻不到」，
+         加 id DESC 让排序成为全序。代价是大概率走 filesort（ORDER BY 借不上索引），本项目规模下可接受 -->
+    <select id="selectFeedPage" resultType="com.lyy.video.entity.po.Video">
+        SELECT * FROM video
+        WHERE status = 1
+          AND user_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+        ORDER BY create_time DESC, id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countFeed" resultType="long">
+        SELECT COUNT(*) FROM video
+        WHERE status = 1
+          AND user_id IN
+        <foreach collection="authorIds" item="authorId" open="(" separator="," close=")">
+            #{authorId}
+        </foreach>
+    </select>
+
 </mapper>

@@ -54,4 +54,22 @@ public interface VideoMapper {
 
     /** 更新视频状态（治理动作用） */
     int updateStatus(@Param("videoId") Long videoId, @Param("status") Integer status);
+
+    /**
+     * 动态流：按作者集合分页查询已发布视频
+     * 这是全链路里唯一承担排序与分页的地方。
+     * 排序为 create_time DESC, id DESC——create_time 是秒级，必须用 id 兜底成全序，
+     * 否则并列行在 LIMIT 翻页时次序不定，会出现卡片跨页重复或漏条
+     * @param authorIds 作者 ID 集合（我关注的 ∪ 我自己），由调用方保证非空
+     * @param offset    偏移量，(pageNum-1)*pageSize
+     * @param pageSize  每页条数
+     */
+    List<Video> selectFeedPage(@Param("authorIds") List<Long> authorIds,
+                               @Param("offset") int offset,
+                               @Param("pageSize") int pageSize);
+
+    /**
+     * 动态流：统计同一条件的总数（用于前端判断「没有更多了」）
+     */
+    long countFeed(@Param("authorIds") List<Long> authorIds);
 }

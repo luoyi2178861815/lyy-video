@@ -41,4 +41,14 @@
         SELECT COUNT(*) FROM user_follow WHERE followee_id = #{userId}
     </select>
 
+    <!-- 动态流专用：一次取回全部关注 ID。
+         LIMIT 1000 是硬上限，防止关注数极多时 IN 子句撑爆（表现为部分关注者的动态不显示）。
+         走已有索引 uk_follower_followee 的最左前缀 follower_id，无需新增索引。 -->
+    <select id="selectFollowingIds" resultType="java.lang.Long">
+        SELECT followee_id FROM user_follow
+        WHERE follower_id = #{userId}
+        ORDER BY id DESC
+        LIMIT 1000
+    </select>
+
 </mapper>

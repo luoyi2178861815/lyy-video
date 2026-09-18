@@ -18,7 +18,7 @@
 | 熔断降级 | Sentinel |
 | AI | Spring AI Alibaba + 通义千问 (DashScope) + Elasticsearch 向量检索 |
 | 视频处理 | JavaCV（元数据提取） |
-| 语言 & 构建 | Java 17 + Maven 多模块 |
+| 语言 & 构建 | Java 21 + Maven 多模块 |
 
 ## 系统架构
 
@@ -69,7 +69,7 @@
 | **common** | —     | 公共库：实体、DTO、统一返回、JWT 工具、异常处理、拦截器 |
 | **gateway-service** | 8001  | API 网关：路由转发、JWT 鉴权（白名单 + Token Family 防重放） |
 | **user-service** | 15000 | 用户服务：注册/登录、个人信息、双 Token 机制、经验值系统、**后台管理员账号与登录** |
-| **video-service** | 8002  | 视频服务：上传/播放/搜索、JavaCV 元数据提取、观看进度看门狗、**视频审核治理** |
+| **video-service** | 8002  | 视频服务：上传/播放/搜索、JavaCV 元数据提取、观看进度看门狗、**视频审核治理**、**关注动态流** |
 | **interaction-service** | 12000 | 互动服务：点赞/投币/收藏/评论/关注、Sentinel 熔断降级 |
 | **aigc-service** | 1000  | AI 智能助手：RAG 检索增强 + Tool Calling + SSE 流式对话 + 持久化记忆 |
 | **recommend-service** | 14000 | 推荐服务：（开发中）热门排行、个性化推荐 |
@@ -102,6 +102,16 @@ Access Token（15min）+ Refresh Token（7d），基于 Token Family 轮转机�
 
 ### 多级缓存计数同步
 L1 Redis 统计计数（高频读写）→ L2 Redis 基础数据 → L3 MySQL 持久化。互动事件通过 RabbitMQ 异步同步到各服务，保证最终一致性。
+
+### 关注动态流
+C 端 `/dynamic` 页面把「我关注的作者 + 我自己」的投稿聚合成一条按发布时间倒序的时间线，支持滚动加载与就地点赞（乐观更新）。
+
+- **读时聚合，不引入写扩散**：平台没有「投稿」MQ 事件，若走 fan-out on write 就得凭空加事件 + `user_feed` 收件箱表，还要自己维护取关 / 下架 / 重新上架 / 删除四处一致性。本方案改为读时聚合，代价是一笔交换——**用「关注列表不分页 + 一个较宽的 IN 查询」换「分页正确 + 3 次批量 RPC」**
+- **端点必须落在 video-service**：决定排序与分页的 `create_time` / `status` 在 `video` 表上，跨服务做不可能既正确分页又不爆内存；落在 interaction-service 只能全量捞回内存排序
+- **省的是 RPC 不是 DB**：三次跨服务调用都是批量的一次，避免 N+1；而关注列表那条不分页查询是本方案的成本，不是收益
+- **三处降级正确性不同**：拿不到关注列表**直接失败**（降级会静默丢内容）；拿不到作者资料降级为「用户{id}」+ 空头像；拿不到点赞状态降级为「全部未赞」并**把 ♥ 置为禁用态**——因为点赞是 toggle 语义，状态错会让用户一点反而取消了真实的赞
+- **排序用 `create_time DESC, id DESC`**：`create_time` 是秒级 `DATETIME`，并列行若不加主键兜底，`LIMIT` 翻页时次序不定，会出现同一张卡片跨页重复或某条永远翻不到
+- **零库表改动**：`user_follow` / `video_like` / `video` 三表现有索引实测够用，不建表、不加索引
 
 ### 视频审核治理
 上传的视频先进审核（`status=3`），管理员在独立后台通过或驳回，通过后才发布；已发布的视频可下架、下架后可重新上架。被驳回的视频，作者在「我的 → 审核区」能看到驳回原因（见 `yi-frontend`）。
@@ -203,7 +213,7 @@ lyy-video/
 ├── common/                   # 公共模块（实体、DTO、工具类、拦截器）
 ├── gateway-service/          # API 网关（路由 + JWT 过滤器 + AdminAuth）
 ├── user-service/             # 用户服务（注册/登录/Token Family/管理员账号）
-├── video-service/            # 视频服务（上传/播放/JavaCV/看门狗/审核治理）
+├── video-service/            # 视频服务（上传/播放/JavaCV/看门狗/审核治理/关注动态流）
 ├── interaction-service/      # 互动服务（点赞/评论/收藏/关注/Sentinel）
 ├── aigc-service/             # AI 服务（RAG/Tool Calling/SSE/会话记忆）
 ├── recommend-service/        # 推荐服务（开发中）
@@ -212,7 +222,7 @@ lyy-video/
 
 本仓库只含后端微服务。本地工作区中与 `lyy-video/` 同级还有两个前端工程（不在本仓库内）：
 
-- `yi-frontend/` —— C 端，开发端口 `:3000`，含「我的 → 审核区」
+- `yi-frontend/` —— C 端，开发端口 `:3000`，含「我的 → 审核区」、关注动态
 - `admin-frontend/` —— 管理后台，开发端口 `:3001`
 
 对应的一键启动脚本 `start-frontend.bat` / `start-admin-frontend.bat` 同样放在工作区根目录。

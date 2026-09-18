@@ -17,6 +17,10 @@ public class VideoInfoVO {
     private Long collectCount;
     private Long commentCount;
     private Long playCount;
+    // 作者的用户ID。字段名刻意与 Video 实体保持一致（而不是叫 authorId），
+    // 因为 changeToVideoInfoVO 靠 BeanUtils.copyProperties 拷贝，只认同名属性；
+    // 前端「关注作者」「跳作者主页」都依赖这个字段。
+    private Long userId;
     //返回作者名称
     private String authorName;
     //返回用户专属信息
