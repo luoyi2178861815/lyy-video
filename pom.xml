@@ -80,7 +80,7 @@
                 <version>${redisson.version}</version>
             </dependency>
             <!-- Spring Cloud Alibaba BOM（Nacos 注册中心） -->
-             <dependency>
+            <dependency>
                 <groupId>com.alibaba.cloud</groupId>
                 <artifactId>spring-cloud-alibaba-dependencies</artifactId>
                 <version>${spring-cloud-alibaba.version}</version>
